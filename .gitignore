@@ -1,0 +1,20 @@
+# Node modules
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Variables de entorno (contiene contraseñas)
+backend/.env
+.env
+
+# Uploads (imágenes subidas)
+backend/src/uploads/*
+!backend/src/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
