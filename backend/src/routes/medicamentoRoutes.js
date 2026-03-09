@@ -1,14 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  getMedicamentos, 
-  getMedicamentoById, 
-  createMedicamento, 
-  updateMedicamento, 
-  deleteMedicamento,
-  getStockBajo
-} = require('../controllers/medicamentoController');
 const { verificarToken } = require('../middlewares/authMiddleware');
+const { getMedicamentos, getMedicamentoById, createMedicamento, updateMedicamento, deleteMedicamento, getStockBajo } = require('../controllers/medicamentoController');
 
 router.get('/', verificarToken, getMedicamentos);
 router.get('/stock-bajo', verificarToken, getStockBajo);

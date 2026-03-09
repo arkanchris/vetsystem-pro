@@ -1,24 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const pacienteController = require('../controllers/pacienteController');
-const { verificarToken } = require('../middlewares/authMiddleware');
 const multer = require('multer');
 const path = require('path');
+const { verificarToken } = require('../middlewares/authMiddleware');
+const {
+  getPacientes, getPacienteById, createPaciente,
+  updatePaciente, deletePaciente, searchPacientes
+} = require('../controllers/pacienteController');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => { cb(null, 'src/uploads/'); },
-  filename: (req, file, cb) => {
-    cb(null, 'paciente_' + Date.now() + path.extname(file.originalname));
-  }
+  destination: (req, file, cb) => cb(null, 'src/uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
-
 const upload = multer({ storage });
 
-router.get('/', verificarToken, pacienteController.getPacientes);
-router.get('/buscar', verificarToken, pacienteController.searchPacientes);
-router.get('/:id', verificarToken, pacienteController.getPacienteById);
-router.post('/', verificarToken, upload.single('foto'), pacienteController.createPaciente);
-router.put('/:id', verificarToken, upload.single('foto'), pacienteController.updatePaciente);
-router.delete('/:id', verificarToken, pacienteController.deletePaciente);
+router.get('/', verificarToken, getPacientes);
+router.get('/search', verificarToken, searchPacientes);
+router.get('/:id', verificarToken, getPacienteById);
+router.post('/', verificarToken, upload.single('foto'), createPaciente);
+router.put('/:id', verificarToken, updatePaciente);
+router.delete('/:id', verificarToken, deletePaciente);
 
 module.exports = router;

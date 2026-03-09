@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const historiaController = require('../controllers/historiaController');
 const { verificarToken } = require('../middlewares/authMiddleware');
+const { getHistoriasByPaciente, getHistoriaById, createHistoria, updateHistoria, deleteHistoria } = require('../controllers/historiaController');
 
-router.get('/paciente/:paciente_id', verificarToken, historiaController.getHistoriasByPaciente);
-router.get('/:id', verificarToken, historiaController.getHistoriaById);
-router.post('/', verificarToken, historiaController.createHistoria);
-router.put('/:id', verificarToken, historiaController.updateHistoria);
-router.delete('/:id', verificarToken, historiaController.deleteHistoria);
+router.get('/paciente/:pacienteId', verificarToken, getHistoriasByPaciente);
+router.get('/:id', verificarToken, getHistoriaById);
+router.post('/', verificarToken, createHistoria);
+router.put('/:id', verificarToken, updateHistoria);
+router.delete('/:id', verificarToken, deleteHistoria);
 
 module.exports = router;
