@@ -8,6 +8,8 @@ import Propietarios from './pages/Propietarios';
 import Medicamentos from './pages/Medicamentos';
 import Citas from './pages/Citas';
 import Historias from './pages/Historias';
+import Configuracion from './pages/Configuracion';
+import Adopciones from './pages/Adopciones';
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
             <Route path="medicamentos" element={<Medicamentos />} />
             <Route path="citas" element={<Citas />} />
             <Route path="historias" element={<Historias />} />
+            <Route path="adopciones" element={<Adopciones />} />
+            <Route path="configuracion" element={<Configuracion />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>

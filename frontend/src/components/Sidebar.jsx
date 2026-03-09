@@ -2,12 +2,17 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const menu = [
-  { path: '/dashboard', icono: '📊', label: 'Dashboard' },
-  { path: '/pacientes', icono: '🐾', label: 'Pacientes' },
-  { path: '/propietarios', icono: '👨‍👩‍👧', label: 'Propietarios' },
-  { path: '/historias', icono: '📋', label: 'Historia Clínica' },
-  { path: '/medicamentos', icono: '💊', label: 'Medicamentos' },
-  { path: '/citas', icono: '📅', label: 'Citas' },
+  { path: '/dashboard',     icono: '📊', label: 'Dashboard' },
+  { path: '/pacientes',     icono: '🐾', label: 'Pacientes' },
+  { path: '/propietarios',  icono: '👨‍👩‍👧', label: 'Propietarios' },
+  { path: '/historias',     icono: '📋', label: 'Historia Clínica' },
+  { path: '/medicamentos',  icono: '💊', label: 'Medicamentos' },
+  { path: '/citas',         icono: '📅', label: 'Citas' },
+  { path: '/adopciones',    icono: '🏠', label: 'Adopciones' },
+];
+
+const menuAdmin = [
+  { path: '/configuracion', icono: '⚙️', label: 'Configuración' },
 ];
 
 export default function Sidebar() {
@@ -45,8 +50,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Menú */}
-      <nav className="flex-1 p-4 space-y-1">
+      {/* Menú principal */}
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {menu.map((item) => (
           <NavLink
             key={item.path}
@@ -63,6 +68,31 @@ export default function Sidebar() {
             {item.label}
           </NavLink>
         ))}
+
+        {/* Separador y menú admin */}
+        {usuario?.rol === 'admin' && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="text-xs text-blue-400 uppercase tracking-widest px-4">Administración</p>
+            </div>
+            {menuAdmin.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium
+                  ${isActive
+                    ? 'bg-white text-blue-900 shadow-lg'
+                    : 'text-blue-100 hover:bg-blue-700'
+                  }`
+                }
+              >
+                <span className="text-xl">{item.icono}</span>
+                {item.label}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* Logout */}
