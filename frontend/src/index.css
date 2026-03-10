@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+/* ── Fondo principal del sistema ──────────────────────────────────────────── */
+:root {
+  --bg-app: #eef2f7;      /* Gris azulado suave — contrasta con tarjetas blancas */
+  --bg-sidebar: #1e2d5a;  /* Azul oscuro del sidebar (ya definido en Sidebar.jsx) */
+}
+
+body {
+  background-color: var(--bg-app);
+}
+
+/* Scrollbar personalizada — se ve más prolija */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #dde3ec;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #a0aec0;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
