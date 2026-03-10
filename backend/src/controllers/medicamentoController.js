@@ -11,53 +11,42 @@ const parseFecha = (fecha) => {
 
 const getMedicamentos = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT * FROM medicamentos WHERE activo = true ORDER BY nombre ASC
-    `);
+    const result = await pool.query('SELECT * FROM medicamentos WHERE activo = true ORDER BY nombre ASC');
     res.json(result.rows);
   } catch (error) {
-    console.error('Error getMedicamentos:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
 const getMedicamentoById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query('SELECT * FROM medicamentos WHERE id=$1', [id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Medicamento no encontrado' });
+    const result = await pool.query('SELECT * FROM medicamentos WHERE id=$1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error getMedicamentoById:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
 const createMedicamento = async (req, res) => {
   try {
-    const { nombre, descripcion, categoria, unidad, stock, stock_minimo, precio, fecha_vencimiento } = req.body;
+    const { nombre, descripcion, categoria, unidad, stock, stock_minimo, precio_compra, precio_venta, precio, fecha_vencimiento } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
 
-    if (!nombre) {
-      return res.status(400).json({ error: 'El nombre del medicamento es requerido' });
-    }
+    const pCompra = parseFloat(precio_compra) || 0;
+    const pVenta  = parseFloat(precio_venta)  || parseFloat(precio) || 0;
 
     const result = await pool.query(`
-      INSERT INTO medicamentos (nombre, descripcion, categoria, unidad, stock, stock_minimo, precio, fecha_vencimiento)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
+      INSERT INTO medicamentos (nombre, descripcion, categoria, unidad, stock, stock_minimo, precio, precio_compra, precio_venta, fecha_vencimiento)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
     `, [
-      nombre,
-      descripcion || null,
-      categoria || null,
-      unidad || null,
-      stock !== undefined && stock !== '' ? parseFloat(stock) : 0,
-      stock_minimo !== undefined && stock_minimo !== '' ? parseFloat(stock_minimo) : 0,
-      precio !== undefined && precio !== '' ? parseFloat(precio) : 0,
+      nombre, descripcion||null, categoria||null, unidad||null,
+      parseFloat(stock)||0, parseFloat(stock_minimo)||0,
+      pVenta, pCompra, pVenta,
       parseFecha(fecha_vencimiento)
     ]);
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error createMedicamento:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -65,52 +54,42 @@ const createMedicamento = async (req, res) => {
 const updateMedicamento = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, categoria, unidad, stock, stock_minimo, precio, fecha_vencimiento } = req.body;
+    const { nombre, descripcion, categoria, unidad, stock, stock_minimo, precio_compra, precio_venta, precio, fecha_vencimiento } = req.body;
+
+    const pCompra = parseFloat(precio_compra) || 0;
+    const pVenta  = parseFloat(precio_venta)  || parseFloat(precio) || 0;
 
     const result = await pool.query(`
-      UPDATE medicamentos SET nombre=$1, descripcion=$2, categoria=$3,
-      unidad=$4, stock=$5, stock_minimo=$6, precio=$7, fecha_vencimiento=$8
-      WHERE id=$9 RETURNING *
+      UPDATE medicamentos SET nombre=$1, descripcion=$2, categoria=$3, unidad=$4,
+      stock=$5, stock_minimo=$6, precio=$7, precio_compra=$8, precio_venta=$9, fecha_vencimiento=$10
+      WHERE id=$11 RETURNING *
     `, [
-      nombre,
-      descripcion || null,
-      categoria || null,
-      unidad || null,
-      stock !== undefined && stock !== '' ? parseFloat(stock) : 0,
-      stock_minimo !== undefined && stock_minimo !== '' ? parseFloat(stock_minimo) : 0,
-      precio !== undefined && precio !== '' ? parseFloat(precio) : 0,
-      parseFecha(fecha_vencimiento),
-      id
+      nombre, descripcion||null, categoria||null, unidad||null,
+      parseFloat(stock)||0, parseFloat(stock_minimo)||0,
+      pVenta, pCompra, pVenta,
+      parseFecha(fecha_vencimiento), id
     ]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Medicamento no encontrado' });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error updateMedicamento:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
 const deleteMedicamento = async (req, res) => {
   try {
-    const { id } = req.params;
-    await pool.query('UPDATE medicamentos SET activo=false WHERE id=$1', [id]);
-    res.json({ mensaje: 'Medicamento eliminado' });
+    await pool.query('UPDATE medicamentos SET activo=false WHERE id=$1', [req.params.id]);
+    res.json({ mensaje: 'Eliminado' });
   } catch (error) {
-    console.error('Error deleteMedicamento:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
 const getStockBajo = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT * FROM medicamentos 
-      WHERE activo=true AND stock <= stock_minimo
-      ORDER BY stock ASC
-    `);
+    const result = await pool.query('SELECT * FROM medicamentos WHERE activo=true AND stock <= stock_minimo ORDER BY stock ASC');
     res.json(result.rows);
   } catch (error) {
-    console.error('Error getStockBajo:', error);
     res.status(500).json({ error: error.message });
   }
 };

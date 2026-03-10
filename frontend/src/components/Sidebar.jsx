@@ -1,23 +1,26 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 
-const menu = [
-  { path: '/dashboard',     icono: '📊', label: 'Dashboard' },
-  { path: '/pacientes',     icono: '🐾', label: 'Pacientes' },
-  { path: '/propietarios',  icono: '👨‍👩‍👧', label: 'Propietarios' },
-  { path: '/historias',     icono: '📋', label: 'Historia Clínica' },
-  { path: '/medicamentos',  icono: '💊', label: 'Medicamentos' },
-  { path: '/citas',         icono: '📅', label: 'Citas' },
-  { path: '/adopciones',    icono: '🏠', label: 'Adopciones' },
-];
-
-const menuAdmin = [
-  { path: '/configuracion', icono: '⚙️', label: 'Configuración' },
-];
+const MenuItem = ({ to, icono, label }) => (
+  <NavLink to={to}
+    className={({ isActive }) =>
+      `flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
+        isActive
+          ? 'bg-white/20 text-white'
+          : 'text-white/70 hover:bg-white/10 hover:text-white'
+      }`
+    }>
+    <span className="text-lg">{icono}</span>
+    <span>{label}</span>
+  </NavLink>
+);
 
 export default function Sidebar() {
-  const { usuario, logout } = useAuth();
+  const { usuario, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const esAdmin = usuario?.rol === 'admin';
+  const puedeVerFinanzas = esAdmin || usuario?.puede_ver_finanzas;
 
   const handleLogout = () => {
     logout();
@@ -25,86 +28,67 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-64 min-h-screen bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-blue-700">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">🐾</span>
-          <div>
-            <h1 className="font-bold text-lg">VetSystem Pro</h1>
-            <p className="text-blue-300 text-xs">Gestión Veterinaria</p>
-          </div>
+    <div className="w-56 min-h-screen bg-gradient-to-b from-blue-800 to-blue-900 flex flex-col py-5 px-3">
+      {/* Logo y nombre clínica */}
+      <div className="mb-6 px-2">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-2xl">🐾</span>
+          <span className="text-white font-bold text-lg">VetSystem Pro</span>
         </div>
+        <p className="text-blue-300 text-xs">Gestión Veterinaria</p>
       </div>
 
-      {/* Usuario */}
-      <div className="p-4 border-b border-blue-700">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold text-lg">
-            {usuario?.nombre?.charAt(0)}
+      {/* Usuario actual */}
+      <div className="bg-white/10 rounded-xl p-3 mb-6">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm">
+            {usuario?.nombre?.charAt(0)?.toUpperCase()}
           </div>
           <div>
-            <p className="font-medium text-sm">{usuario?.nombre}</p>
+            <p className="text-white text-sm font-semibold leading-tight">{usuario?.nombre}</p>
             <p className="text-blue-300 text-xs capitalize">{usuario?.rol}</p>
           </div>
         </div>
       </div>
 
-      {/* Menú principal */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {menu.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium
-              ${isActive
-                ? 'bg-white text-blue-900 shadow-lg'
-                : 'text-blue-100 hover:bg-blue-700'
-              }`
-            }
-          >
-            <span className="text-xl">{item.icono}</span>
-            {item.label}
-          </NavLink>
-        ))}
+      {/* Navegación principal */}
+      <nav className="flex-1 space-y-1">
+        <MenuItem to="/dashboard"    icono="📊" label="Dashboard" />
+        <MenuItem to="/pacientes"    icono="🐾" label="Pacientes" />
+        <MenuItem to="/propietarios" icono="👥" label="Tutores" />
+        <MenuItem to="/historias"    icono="📋" label="Historia Clínica" />
+        <MenuItem to="/medicamentos" icono="💊" label="Medicamentos" />
+        <MenuItem to="/citas"        icono="📅" label="Citas" />
+        <MenuItem to="/adopciones"   icono="🏠" label="Adopciones" />
+        <MenuItem to="/tienda"       icono="🛍️" label="Tienda" />
 
-        {/* Separador y menú admin */}
-        {usuario?.rol === 'admin' && (
+        {/* Módulo financiero: solo admin o con permiso */}
+        {puedeVerFinanzas && (
           <>
             <div className="pt-3 pb-1">
-              <p className="text-xs text-blue-400 uppercase tracking-widest px-4">Administración</p>
+              <p className="text-blue-400 text-xs font-semibold px-2 uppercase tracking-wider">Finanzas</p>
             </div>
-            {menuAdmin.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium
-                  ${isActive
-                    ? 'bg-white text-blue-900 shadow-lg'
-                    : 'text-blue-100 hover:bg-blue-700'
-                  }`
-                }
-              >
-                <span className="text-xl">{item.icono}</span>
-                {item.label}
-              </NavLink>
-            ))}
+            <MenuItem to="/finanzas" icono="💰" label="Ingresos & Gastos" />
+          </>
+        )}
+
+        {/* Administración */}
+        {esAdmin && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="text-blue-400 text-xs font-semibold px-2 uppercase tracking-wider">Administración</p>
+            </div>
+            <MenuItem to="/configuracion" icono="⚙️" label="Configuración" />
           </>
         )}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-blue-700">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-blue-100 hover:bg-red-600 transition-all duration-200 text-sm font-medium"
-        >
-          <span className="text-xl">🚪</span>
-          Cerrar Sesión
-        </button>
-      </div>
+      {/* Cerrar sesión */}
+      <button onClick={handleLogout}
+        className="mt-4 flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/70 hover:bg-red-500/20 hover:text-red-300 transition font-medium text-sm w-full">
+        <span className="text-lg">🚪</span>
+        <span>Cerrar Sesión</span>
+      </button>
     </div>
   );
 }

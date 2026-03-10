@@ -3,23 +3,22 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const { verificarToken } = require('../middlewares/authMiddleware');
-const {
-  getUsuarios, createUsuario, updateUsuario, deleteUsuario,
-  getConfiguracion, updateConfiguracion
-} = require('../controllers/configuracionController');
+const { getConfiguracion, updateConfiguracion } = require('../controllers/configuracionController');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'src/uploads/'),
-  filename: (req, file, cb) => cb(null, 'firma_' + Date.now() + path.extname(file.originalname))
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads/')),
+  filename: (req, file, cb) => {
+    const prefix = file.fieldname === 'logo' ? 'logo_' : 'firma_clinica_';
+    cb(null, prefix + Date.now() + path.extname(file.originalname));
+  }
 });
+
 const upload = multer({ storage });
 
-router.get('/usuarios', verificarToken, getUsuarios);
-router.post('/usuarios', verificarToken, createUsuario);
-router.put('/usuarios/:id', verificarToken, updateUsuario);
-router.delete('/usuarios/:id', verificarToken, deleteUsuario);
-
 router.get('/', verificarToken, getConfiguracion);
-router.put('/', verificarToken, upload.single('firma'), updateConfiguracion);
+router.put('/', verificarToken, upload.fields([
+  { name: 'logo', maxCount: 1 },
+  { name: 'firma', maxCount: 1 }
+]), updateConfiguracion);
 
 module.exports = router;
