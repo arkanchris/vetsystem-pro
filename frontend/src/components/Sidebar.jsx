@@ -1,94 +1,103 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
-const MenuItem = ({ to, icono, label }) => (
-  <NavLink to={to}
-    className={({ isActive }) =>
-      `flex items-center gap-3 px-4 py-2.5 rounded-xl transition font-medium text-sm ${
-        isActive
-          ? 'bg-white/20 text-white'
-          : 'text-white/70 hover:bg-white/10 hover:text-white'
-      }`
-    }>
-    <span className="text-lg">{icono}</span>
-    <span>{label}</span>
-  </NavLink>
-);
+function MenuItem({ to, icono, label }) {
+  return (
+    <NavLink to={to}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+          isActive ? 'bg-white/20 text-white shadow-sm' : 'text-blue-100 hover:bg-white/10 hover:text-white'
+        }`}>
+      <span className="text-lg">{icono}</span>
+      <span>{label}</span>
+    </NavLink>
+  );
+}
 
 export default function Sidebar() {
-  const { usuario, logout } = useContext(AuthContext);
+  const { usuario, logout, tieneModulo } = useAuth();
   const navigate = useNavigate();
-  const esAdmin = usuario?.rol === 'admin';
-  const puedeVerFinanzas = esAdmin || usuario?.puede_ver_finanzas;
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  const esMaster = usuario?.rol === 'master';
+  const esAdmin  = usuario?.rol === 'admin' || esMaster;
 
   return (
-    <div className="w-56 min-h-screen bg-gradient-to-b from-blue-800 to-blue-900 flex flex-col py-5 px-3">
-      {/* Logo y nombre clínica */}
-      <div className="mb-6 px-2">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-2xl">🐾</span>
-          <span className="text-white font-bold text-lg">VetSystem Pro</span>
-        </div>
-        <p className="text-blue-300 text-xs">Gestión Veterinaria</p>
-      </div>
+    <aside className="w-56 min-h-screen flex flex-col shadow-2xl"
+      style={{ background: 'linear-gradient(180deg, #1e2d5a 0%, #162347 100%)' }}>
 
-      {/* Usuario actual */}
-      <div className="bg-white/10 rounded-xl p-3 mb-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm">
-            {usuario?.nombre?.charAt(0)?.toUpperCase()}
-          </div>
+      {/* Logo */}
+      <div className="p-5 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-xl">🐾</div>
           <div>
-            <p className="text-white text-sm font-semibold leading-tight">{usuario?.nombre}</p>
-            <p className="text-blue-300 text-xs capitalize">{usuario?.rol}</p>
+            <h1 className="text-white font-bold text-base leading-tight">VetSystem Pro</h1>
+            <p className="text-blue-300 text-xs">
+              {esMaster ? '✨ Máster' : (usuario?.clinica_nombre || 'Gestión Veterinaria')}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Navegación principal */}
-      <nav className="flex-1 space-y-1">
-        <MenuItem to="/dashboard"    icono="📊" label="Dashboard" />
-        <MenuItem to="/pacientes"    icono="🐾" label="Pacientes" />
-        <MenuItem to="/propietarios" icono="👥" label="Tutores" />
-        <MenuItem to="/historias"    icono="📋" label="Historia Clínica" />
-        <MenuItem to="/medicamentos" icono="💊" label="Medicamentos" />
-        <MenuItem to="/citas"        icono="📅" label="Citas" />
-        <MenuItem to="/adopciones"   icono="🏠" label="Adopciones" />
-        <MenuItem to="/tienda"       icono="🛍️" label="Tienda" />
+      {/* Usuario */}
+      <div className="px-4 py-3 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white ${esMaster ? 'bg-yellow-500' : 'bg-blue-500'}`}>
+            {usuario?.nombre?.charAt(0)?.toUpperCase() || 'U'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-white text-sm font-medium truncate">{usuario?.nombre}</p>
+            <p className={`text-xs capitalize ${esMaster ? 'text-yellow-300' : 'text-blue-300'}`}>
+              {esMaster ? '⭐ Máster' : usuario?.rol}
+            </p>
+          </div>
+        </div>
+      </div>
 
-        {/* Módulo financiero: solo admin o con permiso */}
-        {puedeVerFinanzas && (
+      {/* Navegación */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+
+        {esMaster && (
           <>
-            <div className="pt-3 pb-1">
-              <p className="text-blue-400 text-xs font-semibold px-2 uppercase tracking-wider">Finanzas</p>
-            </div>
+            <p className="text-yellow-400 text-xs font-semibold px-2 uppercase tracking-wider mb-2">⭐ Panel Máster</p>
+            <MenuItem to="/master" icono="🔧" label="Gestión de Clientes" />
+            <div className="border-t border-white/10 my-3" />
+          </>
+        )}
+
+        <p className="text-blue-400 text-xs font-semibold px-2 uppercase tracking-wider mb-2">Sistema</p>
+        {tieneModulo('dashboard')    && <MenuItem to="/dashboard"    icono="📊" label="Dashboard" />}
+        {tieneModulo('pacientes')    && <MenuItem to="/pacientes"    icono="🐾" label="Pacientes" />}
+        {tieneModulo('tutores')      && <MenuItem to="/propietarios" icono="👤" label="Tutores" />}
+        {tieneModulo('historias')    && <MenuItem to="/historias"    icono="📋" label="Historia Clínica" />}
+        {tieneModulo('medicamentos') && <MenuItem to="/medicamentos" icono="💊" label="Medicamentos" />}
+        {tieneModulo('citas')        && <MenuItem to="/citas"        icono="📅" label="Citas" />}
+        {tieneModulo('adopciones')   && <MenuItem to="/adopciones"   icono="🏠" label="Adopciones" />}
+        {tieneModulo('tienda')       && <MenuItem to="/tienda"       icono="🛍️" label="Tienda" />}
+
+        {tieneModulo('finanzas') && (
+          <>
+            <div className="border-t border-white/10 my-3" />
+            <p className="text-blue-400 text-xs font-semibold px-2 uppercase tracking-wider mb-2">Finanzas</p>
             <MenuItem to="/finanzas" icono="💰" label="Ingresos & Gastos" />
           </>
         )}
 
-        {/* Administración */}
-        {esAdmin && (
+        {(esAdmin || tieneModulo('configuracion')) && (
           <>
-            <div className="pt-3 pb-1">
-              <p className="text-blue-400 text-xs font-semibold px-2 uppercase tracking-wider">Administración</p>
-            </div>
+            <div className="border-t border-white/10 my-3" />
+            <p className="text-blue-400 text-xs font-semibold px-2 uppercase tracking-wider mb-2">Admin</p>
             <MenuItem to="/configuracion" icono="⚙️" label="Configuración" />
           </>
         )}
       </nav>
 
-      {/* Cerrar sesión */}
-      <button onClick={handleLogout}
-        className="mt-4 flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/70 hover:bg-red-500/20 hover:text-red-300 transition font-medium text-sm w-full">
-        <span className="text-lg">🚪</span>
-        <span>Cerrar Sesión</span>
-      </button>
-    </div>
+      {/* Logout */}
+      <div className="p-3 border-t border-white/10">
+        <button onClick={() => { logout(); navigate('/login'); }}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-blue-200 hover:bg-red-500/20 hover:text-red-300 transition-all text-sm font-medium">
+          <span>🚪</span><span>Cerrar sesión</span>
+        </button>
+      </div>
+    </aside>
   );
 }

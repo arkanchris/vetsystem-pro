@@ -5,38 +5,52 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(null);
-  const [token, setToken] = useState(null);
+  const [token, setToken]     = useState(null);
+  const [modulos, setModulos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    const usuarioGuardado = localStorage.getItem('usuario');
-    const tokenGuardado = localStorage.getItem('token');
-    if (usuarioGuardado && tokenGuardado) {
-      setUsuario(JSON.parse(usuarioGuardado));
-      setToken(tokenGuardado);
+    const u = localStorage.getItem('usuario');
+    const t = localStorage.getItem('token');
+    const m = localStorage.getItem('modulos');
+    if (u && t) {
+      setUsuario(JSON.parse(u));
+      setToken(t);
+      setModulos(m ? JSON.parse(m) : []);
     }
     setCargando(false);
   }, []);
 
   const login = async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
-    const { token, usuario } = response.data;
-    localStorage.setItem('token', token);
+    const res = await api.post('/auth/login', { email, password });
+    const { token, usuario } = res.data;
+    const mods = usuario.modulos || [];
+    localStorage.setItem('token',   token);
     localStorage.setItem('usuario', JSON.stringify(usuario));
+    localStorage.setItem('modulos', JSON.stringify(mods));
     setToken(token);
     setUsuario(usuario);
+    setModulos(mods);
     return usuario;
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('usuario');
+    localStorage.removeItem('modulos');
     setToken(null);
     setUsuario(null);
+    setModulos([]);
+  };
+
+  // ¿El usuario tiene acceso a este módulo?
+  const tieneModulo = (clave) => {
+    if (usuario?.rol === 'master') return true;
+    return modulos.includes(clave);
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, token, login, logout, cargando }}>
+    <AuthContext.Provider value={{ usuario, token, modulos, login, logout, cargando, tieneModulo }}>
       {children}
     </AuthContext.Provider>
   );

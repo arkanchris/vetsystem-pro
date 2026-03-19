@@ -87,7 +87,7 @@ export default function Configuracion() {
         await api.put(`/auth/usuarios/${editandoUsuario.id}`, datos);
         toast.success('✅ Usuario actualizado');
       } else {
-        await api.post('/auth/registro', datos);
+        await api.post('/auth/usuarios', datos);
         toast.success('✅ Usuario creado');
       }
       setModalUsuario(false);
@@ -468,7 +468,6 @@ export default function Configuracion() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="auxiliar">Auxiliar</option>
                   <option value="veterinario">Veterinario</option>
-                  <option value="admin">Administrador</option>
                 </select>
               </div>
               {/* Permisos extra */}
