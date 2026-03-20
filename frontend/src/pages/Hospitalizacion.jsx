@@ -129,12 +129,144 @@ export default function Hospitalizacion() {
   const handleAlta = async (e) => {
     e.preventDefault();
     try {
-      await api.put(`/hospitalizacion/${hospSel.id}`, formAlta);
-      toast.success(`✅ ${formAlta.estado === 'alta' ? 'Alta médica registrada' : 'Estado actualizado'}`);
+      // Enviar todos los campos para evitar nulls en el backend
+      const datos = {
+        estado: formAlta.estado,
+        notas_alta: formAlta.notas_alta,
+        diagnostico_ingreso: hospSel.diagnostico_ingreso || '',
+        pronostico: hospSel.pronostico || 'reservado',
+        costo_dia: hospSel.costo_dia || 0,
+      };
+      await api.put(`/hospitalizacion/${hospSel.id}`, datos);
+      toast.success(`✅ ${formAlta.estado === 'alta' ? 'Alta médica registrada — jaula en limpieza' : 'Estado actualizado'}`);
       setModalAltaMedica(false);
       await cargarDatos();
       setHospSel(null);
-    } catch { toast.error('Error'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Error al dar de alta'); }
+  };
+
+  // Cambiar estado de jaula manualmente (libre ↔ en_limpieza ↔ mantenimiento)
+  const cambiarEstadoJaula = async (jaulaId, nuevoEstado) => {
+    try {
+      const jaula = jaulas.find(j => j.id === jaulaId);
+      await api.put(`/hospitalizacion/jaulas/${jaulaId}`, {
+        numero: jaula.numero, nombre: jaula.nombre,
+        tipo: jaula.tipo, descripcion: jaula.descripcion,
+        estado: nuevoEstado
+      });
+      toast.success(`✅ Jaula ${jaula.numero} → ${nuevoEstado.replace('_',' ')}`);
+      await cargarDatos();
+    } catch { toast.error('Error al cambiar estado'); }
+  };
+
+  // Imprimir expediente completo del paciente hospitalizado
+  const imprimirExpediente = (hosp) => {
+    const win = window.open('', '_blank');
+    const evoluciones = hosp.evoluciones || [];
+    const medicamentos = hosp.medicamentos || [];
+    const dias = Math.ceil((Date.now() - new Date(hosp.fecha_ingreso)) / 86400000) || 1;
+    const costoTotal = dias * (parseFloat(hosp.costo_dia) || 0);
+
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Expediente — ${hosp.paciente_nombre}</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:Arial,sans-serif;font-size:12px;color:#333;padding:24px}
+      h1{color:#dc2626;font-size:20px;margin-bottom:4px}
+      h2{color:#dc2626;font-size:13px;border-bottom:2px solid #dc2626;padding-bottom:4px;margin:16px 0 8px}
+      .header{display:flex;justify-content:space-between;border-bottom:2px solid #dc2626;padding-bottom:12px;margin-bottom:16px}
+      .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:bold;background:#fef3c7;color:#92400e}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+      .campo{background:#f9f9f9;border-left:3px solid #dc2626;padding:6px 10px;border-radius:4px}
+      .campo-label{font-size:10px;font-weight:bold;color:#dc2626;text-transform:uppercase;margin-bottom:2px}
+      table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px}
+      th{background:#fef2f2;padding:5px 8px;text-align:left;border:1px solid #fca5a5;font-weight:bold}
+      td{padding:5px 8px;border:1px solid #fee2e2}
+      .footer{margin-top:24px;border-top:1px solid #ccc;padding-top:8px;display:flex;justify-content:space-between;font-size:10px;color:#888}
+      .firma{text-align:center;margin-top:28px}
+      .firma-linea{border-top:1px solid #333;width:200px;margin:8px auto 4px}
+      @media print{body{padding:10px}}
+    </style></head><body>
+    <div class="header">
+      <div>
+        <h1>🏥 Expediente de Hospitalización</h1>
+        <p style="color:#888;font-size:11px">VetSystem Pro — Sistema de Gestión Veterinaria</p>
+      </div>
+      <div style="text-align:right;font-size:11px;color:#555">
+        <p><b>Hospitalización N° ${hosp.id}</b></p>
+        <p>Ingreso: ${new Date(hosp.fecha_ingreso).toLocaleString('es-CO')}</p>
+        ${hosp.fecha_alta ? `<p>Alta: ${new Date(hosp.fecha_alta).toLocaleString('es-CO')}</p>` : '<p>Estado: <b style="color:#dc2626">Hospitalizado</b></p>'}
+      </div>
+    </div>
+
+    <h2>👤 Datos del Paciente</h2>
+    <div class="grid">
+      <div class="campo"><div class="campo-label">Nombre</div>${hosp.paciente_nombre}</div>
+      <div class="campo"><div class="campo-label">Especie / Raza</div>${hosp.especie} · ${hosp.raza||'-'}</div>
+      <div class="campo"><div class="campo-label">Jaula asignada</div>${hosp.jaula_numero||'-'} (${hosp.jaula_tipo||'-'})</div>
+      <div class="campo"><div class="campo-label">Veterinario responsable</div>Dr. ${hosp.veterinario_nombre||'-'}</div>
+    </div>
+
+    <h2>🩺 Diagnóstico y Motivo</h2>
+    <div class="grid">
+      <div class="campo"><div class="campo-label">Motivo de ingreso</div>${hosp.motivo_ingreso||'-'}</div>
+      <div class="campo"><div class="campo-label">Diagnóstico</div>${hosp.diagnostico_ingreso||'-'}</div>
+      <div class="campo"><div class="campo-label">Pronóstico al ingreso</div><span class="badge">${hosp.pronostico||'-'}</span></div>
+      <div class="campo"><div class="campo-label">Estado</div>${hosp.estado||'-'}</div>
+    </div>
+    ${hosp.notas_alta ? `<div class="campo" style="margin-bottom:12px"><div class="campo-label">Notas de alta / Recomendaciones</div>${hosp.notas_alta}</div>` : ''}
+
+    <h2>📊 Evoluciones (${evoluciones.length})</h2>
+    ${evoluciones.length === 0 ? '<p style="color:#888;font-style:italic">Sin evoluciones registradas</p>' : `
+    <table>
+      <thead><tr><th>Fecha</th><th>Estado</th><th>Temp</th><th>Pulso</th><th>Peso</th><th>Descripción</th><th>Tratamiento</th></tr></thead>
+      <tbody>${evoluciones.map(ev => `
+        <tr>
+          <td>${new Date(ev.fecha).toLocaleString('es-CO')}</td>
+          <td><b>${ev.estado_general||'-'}</b></td>
+          <td>${ev.temperatura ? ev.temperatura+'°C' : '-'}</td>
+          <td>${ev.pulso ? ev.pulso+' lpm' : '-'}</td>
+          <td>${ev.peso ? ev.peso+' kg' : '-'}</td>
+          <td>${ev.descripcion||'-'}</td>
+          <td>${ev.tratamiento_aplicado||'-'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`}
+
+    <h2>💊 Medicamentos administrados (${medicamentos.length})</h2>
+    ${medicamentos.length === 0 ? '<p style="color:#888;font-style:italic">Sin medicamentos registrados</p>' : `
+    <table>
+      <thead><tr><th>Medicamento</th><th>Dosis</th><th>Vía</th><th>Frecuencia</th><th>Desde</th><th>Hasta</th></tr></thead>
+      <tbody>${medicamentos.map(m => `
+        <tr>
+          <td><b>${m.nombre_medicamento || m.med_nombre||'-'}</b></td>
+          <td>${m.dosis||'-'}</td>
+          <td>${m.via_administracion||'-'}</td>
+          <td>${m.frecuencia||'-'}</td>
+          <td>${m.fecha_inicio||'-'}</td>
+          <td>${m.fecha_fin||'-'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`}
+
+    ${costoTotal > 0 ? `
+    <h2>💰 Resumen de costos</h2>
+    <div class="campo">
+      ${dias} día${dias!==1?'s':''} × $${parseFloat(hosp.costo_dia||0).toLocaleString('es-CO')}/día = <b>$${costoTotal.toLocaleString('es-CO')}</b>
+    </div>` : ''}
+
+    <div class="firma">
+      <div class="firma-linea"></div>
+      <p>Firma del Veterinario</p>
+      <p>Dr. ${hosp.veterinario_nombre||'-'}</p>
+    </div>
+    <div class="footer">
+      <span>VetSystem Pro — Expediente de Hospitalización N° ${hosp.id}</span>
+      <span>Impreso: ${new Date().toLocaleString('es-CO')}</span>
+    </div>
+    <script>window.onload=()=>{window.print()}</script>
+    </body></html>`);
+    win.document.close();
   };
 
   const jaulasLibres   = jaulas.filter(j => j.estado === 'libre').length;
@@ -210,27 +342,55 @@ export default function Hospitalizacion() {
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{tipoLabel}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {jaulasTipo.map(j => (
-                        <div key={j.id}
-                          onClick={() => j.hospitalizacion_id && cargarHosp(j.hospitalizacion_id)}
-                          className={`rounded-xl border-2 p-3 transition ${JAULA_COLOR[j.estado]} ${j.hospitalizacion_id ? 'cursor-pointer hover:shadow-md hover:scale-105' : ''}`}>
-                          <div className="flex justify-between items-start mb-1">
-                            <span className="font-bold text-base">{j.numero}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                              j.estado === 'libre' ? 'bg-green-200 text-green-800' :
-                              j.estado === 'ocupada' ? 'bg-red-200 text-red-800' :
-                              j.estado === 'en_limpieza' ? 'bg-yellow-200 text-yellow-800' :
-                              'bg-gray-200 text-gray-700'
-                            }`}>
-                              {j.estado === 'libre' ? 'Libre' : j.estado === 'ocupada' ? 'Ocupada' : j.estado === 'en_limpieza' ? 'Limpieza' : 'Mant.'}
-                            </span>
-                          </div>
-                          {j.paciente_nombre ? (
-                            <div>
-                              <p className="text-xs font-semibold truncate">{j.paciente_nombre}</p>
-                              <p className="text-xs opacity-70">{j.especie}</p>
+                        <div key={j.id} className="relative group">
+                          <div
+                            onClick={() => j.hospitalizacion_id && cargarHosp(j.hospitalizacion_id)}
+                            className={`rounded-xl border-2 p-3 transition ${JAULA_COLOR[j.estado]} ${j.hospitalizacion_id ? 'cursor-pointer hover:shadow-md' : ''}`}>
+                            <div className="flex justify-between items-start mb-1">
+                              <span className="font-bold text-base">{j.numero}</span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                                j.estado === 'libre' ? 'bg-green-200 text-green-800' :
+                                j.estado === 'ocupada' ? 'bg-red-200 text-red-800' :
+                                j.estado === 'en_limpieza' ? 'bg-yellow-200 text-yellow-800' :
+                                'bg-gray-200 text-gray-700'
+                              }`}>
+                                {j.estado === 'libre' ? 'Libre' : j.estado === 'ocupada' ? 'Ocupada' : j.estado === 'en_limpieza' ? 'Limpieza' : 'Mant.'}
+                              </span>
                             </div>
-                          ) : (
-                            <p className="text-xs opacity-50 italic">Disponible</p>
+                            {j.paciente_nombre ? (
+                              <div>
+                                <p className="text-xs font-semibold truncate">{j.paciente_nombre}</p>
+                                <p className="text-xs opacity-70">{j.especie}</p>
+                              </div>
+                            ) : (
+                              <p className="text-xs opacity-50 italic">Disponible</p>
+                            )}
+                          </div>
+                          {/* Menú de cambio de estado — aparece al hover si NO está ocupada con paciente activo */}
+                          {j.estado !== 'ocupada' && (
+                            <div className="absolute top-1 left-1 hidden group-hover:flex gap-1 flex-col bg-white rounded-lg shadow-lg border p-1.5 z-10 min-w-24">
+                              <p className="text-xs font-bold text-gray-500 px-1 mb-0.5">Cambiar estado:</p>
+                              {j.estado !== 'libre' && (
+                                <button onClick={() => cambiarEstadoJaula(j.id, 'libre')}
+                                  className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded hover:bg-green-200 text-left">🟢 Libre</button>
+                              )}
+                              {j.estado !== 'en_limpieza' && (
+                                <button onClick={() => cambiarEstadoJaula(j.id, 'en_limpieza')}
+                                  className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded hover:bg-yellow-200 text-left">🟡 Limpieza</button>
+                              )}
+                              {j.estado !== 'mantenimiento' && (
+                                <button onClick={() => cambiarEstadoJaula(j.id, 'mantenimiento')}
+                                  className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-200 text-left">⚪ Mantenimiento</button>
+                              )}
+                            </div>
+                          )}
+                          {/* Mantenimiento también puede aplicarse a jaulas ocupadas */}
+                          {j.estado === 'ocupada' && (
+                            <div className="absolute top-1 right-1 hidden group-hover:flex">
+                              <button onClick={() => cambiarEstadoJaula(j.id, 'mantenimiento')}
+                                title="Poner en mantenimiento"
+                                className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded shadow hover:bg-gray-200">⚙️</button>
+                            </div>
                           )}
                         </div>
                       ))}
@@ -272,6 +432,10 @@ export default function Hospitalizacion() {
                         <button onClick={() => setModalDocHosp(true)}
                           className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${hospSel.documentos?.length>0?'bg-indigo-100 text-indigo-700 hover:bg-indigo-200':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                           📎 Docs {hospSel.documentos?.length>0?`(${hospSel.documentos.length})`:''}
+                        </button>
+                        <button onClick={() => imprimirExpediente(hospSel)}
+                          className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-lg hover:bg-gray-200 font-medium">
+                          🖨️ Imprimir
                         </button>
                       </div>
                       {hospSel.estado === 'activo' && (
@@ -734,9 +898,21 @@ export default function Hospitalizacion() {
                   </p>
                 </div>
               )}
+              <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-700 flex items-center gap-2">
+                <span>💡</span>
+                <span>Después de confirmar el alta, la jaula pasará a estado <b>en limpieza</b> automáticamente.</span>
+              </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setModalAltaMedica(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">Cancelar</button>
-                <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">Confirmar alta</button>
+                <button type="button" onClick={() => setModalAltaMedica(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">Cancelar</button>
+                <button type="button" onClick={() => imprimirExpediente(hospSel)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium">
+                  🖨️ Imprimir
+                </button>
+                <button type="submit"
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
+                  ✅ Confirmar alta
+                </button>
               </div>
             </form>
           </div>

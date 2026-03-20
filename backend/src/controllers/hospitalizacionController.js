@@ -116,7 +116,7 @@ const updateHospitalizacion = async (req, res) => {
     const hosp = anterior.rows[0];
     // Si se da de alta, liberar jaula y registrar ingreso financiero
     if (estado && estado !== 'activo' && hosp.estado === 'activo') {
-      if (hosp.jaula_id) await client.query('UPDATE hospitalizacion_jaulas SET estado=\'libre\' WHERE id=$1', [hosp.jaula_id]);
+      if (hosp.jaula_id) await client.query("UPDATE hospitalizacion_jaulas SET estado='en_limpieza' WHERE id=$1", [hosp.jaula_id]);
       // Calcular días y costo
       const dias = Math.ceil((Date.now() - new Date(hosp.fecha_ingreso)) / 86400000) || 1;
       const total = dias * (parseFloat(hosp.costo_dia) || 0);
@@ -136,8 +136,8 @@ const updateHospitalizacion = async (req, res) => {
     const r = await client.query(
       `UPDATE hospitalizaciones SET estado=$1,diagnostico_ingreso=$2,pronostico=$3,costo_dia=$4,notas_alta=$5,
        fecha_alta=CASE WHEN $1!='activo' THEN NOW() ELSE fecha_alta END WHERE id=$6 RETURNING *`,
-      [estado||hosp.estado, diagnostico_ingreso||hosp.diagnostico_ingreso, pronostico||hosp.pronostico,
-       parseFloat(costo_dia)||hosp.costo_dia, notas_alta||null, id]
+      [estado||hosp.estado, diagnostico_ingreso||hosp.diagnostico_ingreso||null, pronostico||hosp.pronostico||'reservado',
+       parseFloat(costo_dia)||parseFloat(hosp.costo_dia)||0, notas_alta||null, id]
     );
     await client.query('COMMIT');
     res.json(r.rows[0]);
