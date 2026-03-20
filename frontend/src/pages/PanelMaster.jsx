@@ -227,10 +227,26 @@ export default function PanelMaster() {
   };
 
   const eliminarAdmin = async (admin) => {
-    if (!confirm(`¿Desactivar el usuario admin "${admin.nombre}"?`)) return;
+    if (!confirm(`¿Desactivar el usuario admin "${admin.nombre}"?
+
+Podrá reactivarlo después.`)) return;
     try {
       await api.delete(`/modulos/admins/${admin.id}`);
       toast.success('✅ Admin desactivado');
+      await refrescarClienteSel();
+      setAdminSel(null);
+    } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
+  };
+
+  const eliminarAdminDefinitivo = async (admin) => {
+    if (!confirm(`⚠️ ELIMINAR DEFINITIVAMENTE a "${admin.nombre}"?
+
+Esta acción NO se puede deshacer.
+Se borrarán todos sus datos y permisos.`)) return;
+    if (!confirm(`¿Confirmas que deseas eliminar permanentemente a "${admin.nombre}"?`)) return;
+    try {
+      await api.delete(`/modulos/admins/${admin.id}/eliminar`);
+      toast.success('✅ Admin eliminado definitivamente');
       await refrescarClienteSel();
       setAdminSel(null);
     } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
@@ -492,17 +508,23 @@ export default function PanelMaster() {
                                 title="Editar">
                                 ✏️
                               </button>
-                              {!a.activo && (
+                              {a.activo ? (
+                                <button onClick={e => { e.stopPropagation(); eliminarAdmin(a); }}
+                                  className="bg-orange-100 text-orange-500 p-1.5 rounded-lg hover:bg-orange-200 text-xs"
+                                  title="Desactivar">
+                                  🔕
+                                </button>
+                              ) : (
                                 <button onClick={e => { e.stopPropagation(); reactivarAdmin(a); }}
                                   className="bg-green-100 text-green-600 p-1.5 rounded-lg hover:bg-green-200 text-xs"
                                   title="Reactivar">
                                   ✅
                                 </button>
                               )}
-                              <button onClick={e => { e.stopPropagation(); eliminarAdmin(a); }}
-                                className="bg-red-100 text-red-500 p-1.5 rounded-lg hover:bg-red-200 text-xs"
-                                title="Desactivar">
-                                🗑️
+                              <button onClick={e => { e.stopPropagation(); eliminarAdminDefinitivo(a); }}
+                                className="bg-red-100 text-red-600 p-1.5 rounded-lg hover:bg-red-200 text-xs"
+                                title="Eliminar definitivamente">
+                                ❌
                               </button>
                             </div>
                           </div>
@@ -839,13 +861,29 @@ export default function PanelMaster() {
                 (Contraseña definida al crear el usuario)
               </div>
 
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2 pt-1 flex-wrap">
                 <button onClick={() => { setModalVerAdmin(null); abrirEditarAdmin(modalVerAdmin); }}
                   className="flex-1 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 font-medium text-sm">
                   ✏️ Editar
                 </button>
+                {modalVerAdmin.activo ? (
+                  <button onClick={() => { setModalVerAdmin(null); eliminarAdmin(modalVerAdmin); }}
+                    className="flex-1 py-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 font-medium text-sm">
+                    🔕 Desactivar
+                  </button>
+                ) : (
+                  <button onClick={() => { setModalVerAdmin(null); reactivarAdmin(modalVerAdmin); }}
+                    className="flex-1 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-medium text-sm">
+                    ✅ Reactivar
+                  </button>
+                )}
+                <button onClick={() => { setModalVerAdmin(null); eliminarAdminDefinitivo(modalVerAdmin); }}
+                  className="py-2 px-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 font-medium text-sm"
+                  title="Eliminar definitivamente">
+                  ❌ Eliminar
+                </button>
                 <button onClick={() => setModalVerAdmin(null)}
-                  className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 font-medium text-sm">
+                  className="py-2 px-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 font-medium text-sm">
                   Cerrar
                 </button>
               </div>

@@ -150,12 +150,13 @@ router.put('/usuarios/:id', verificarToken, soloAdmin, async (req, res) => {
 });
 
 // ── Eliminar usuario ──────────────────────────────────────────────────────────
+// ── Desactivar usuario (activo = false) ──────────────────────────────────────
 router.delete('/usuarios/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
     const { rol: rolSolicitante, cliente_id, id: propioId } = req.usuario;
     const { id } = req.params;
     if (parseInt(id) === propioId)
-      return res.status(400).json({ error: '❌ No puedes eliminarte a ti mismo.' });
+      return res.status(400).json({ error: '❌ No puedes desactivarte a ti mismo.' });
     if (rolSolicitante !== 'master') {
       const check = await pool.query('SELECT id FROM usuarios WHERE id=$1 AND cliente_id=$2', [id, cliente_id]);
       if (check.rows.length === 0)
@@ -164,6 +165,48 @@ router.delete('/usuarios/:id', verificarToken, soloAdmin, async (req, res) => {
     await pool.query('UPDATE usuarios SET activo=false WHERE id=$1', [id]);
     res.json({ mensaje: '✅ Usuario desactivado' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── Eliminar usuario definitivamente ─────────────────────────────────────────
+// Máster: puede eliminar cualquier usuario (admin o auxiliar)
+// Admin: solo puede eliminar sus auxiliares (mismo cliente_id, rol != admin/master)
+router.delete('/usuarios/:id/eliminar', verificarToken, soloAdmin, async (req, res) => {
+  try {
+    const { rol: rolSolicitante, cliente_id, id: propioId } = req.usuario;
+    const { id } = req.params;
+
+    if (parseInt(id) === propioId)
+      return res.status(400).json({ error: '❌ No puedes eliminarte a ti mismo.' });
+
+    // Obtener info del usuario a eliminar
+    const target = await pool.query('SELECT * FROM usuarios WHERE id=$1', [id]);
+    if (target.rows.length === 0)
+      return res.status(404).json({ error: '❌ Usuario no encontrado.' });
+
+    const userTarget = target.rows[0];
+
+    if (rolSolicitante === 'master') {
+      // Máster puede eliminar cualquiera menos otro master
+      if (userTarget.rol === 'master')
+        return res.status(403).json({ error: '❌ No puedes eliminar otro usuario máster.' });
+    } else {
+      // Admin solo puede eliminar auxiliares/veterinarios de su propio cliente
+      if (!['auxiliar', 'veterinario'].includes(userTarget.rol))
+        return res.status(403).json({ error: '❌ Solo puedes eliminar usuarios auxiliares.' });
+      if (userTarget.cliente_id !== cliente_id)
+        return res.status(403).json({ error: '❌ Sin permisos sobre este usuario.' });
+    }
+
+    // Limpiar relaciones antes de eliminar
+    await pool.query('DELETE FROM modulos_auxiliar WHERE auxiliar_id=$1', [id]);
+    await pool.query('DELETE FROM modulos_admin    WHERE admin_id=$1', [id]);
+    await pool.query('DELETE FROM usuarios WHERE id=$1', [id]);
+
+    res.json({ mensaje: '✅ Usuario eliminado definitivamente' });
+  } catch (error) {
+    console.error('Error eliminar definitivo:', error);
     res.status(500).json({ error: error.message });
   }
 });

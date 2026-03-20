@@ -67,6 +67,38 @@ export default function Configuracion() {
   };
 
   // ── USUARIOS ──────────────────────────────────────────────────────────────
+  const desactivarUsuario = async (u) => {
+    if (!confirm(`¿Desactivar a "${u.nombre}"?\n\nPodrás reactivarlo editándolo.`)) return;
+    try {
+      await api.put(`/auth/usuarios/${u.id}`, { ...u, activo: false });
+      toast.success('✅ Usuario desactivado');
+      const usrs = await api.get('/auth/usuarios');
+      setUsuarios(usrs.data);
+    } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
+  };
+
+  const reactivarUsuario = async (u) => {
+    try {
+      await api.put(`/auth/usuarios/${u.id}`, { ...u, activo: true });
+      toast.success('✅ Usuario reactivado');
+      const usrs = await api.get('/auth/usuarios');
+      setUsuarios(usrs.data);
+    } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
+  };
+
+  const eliminarUsuarioDefinitivo = async (u) => {
+    if (!['auxiliar','veterinario'].includes(u.rol))
+      return toast.error('Solo puedes eliminar usuarios auxiliares o veterinarios');
+    if (!confirm(`⚠️ ELIMINAR DEFINITIVAMENTE a "${u.nombre}"?\n\nEsta acción NO se puede deshacer.`)) return;
+    if (!confirm(`¿Confirmas eliminar permanentemente a "${u.nombre}"?`)) return;
+    try {
+      await api.delete(`/auth/usuarios/${u.id}/eliminar`);
+      toast.success('✅ Usuario eliminado definitivamente');
+      const usrs = await api.get('/auth/usuarios');
+      setUsuarios(usrs.data);
+    } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
+  };
+
   const abrirModalUsuario = (u = null) => {
     if (u) {
       setEditandoUsuario(u);
@@ -319,7 +351,7 @@ export default function Configuracion() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  {['Nombre','Email','Rol','Finanzas','Estado','Acciones'].map(h => (
+                  {['Nombre','Usuario','Email','Rol','Finanzas','Estado','Acciones'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
                   ))}
                 </tr>
@@ -327,8 +359,11 @@ export default function Configuracion() {
               <tbody className="divide-y divide-gray-100">
                 {usuarios.map(u => (
                   <tr key={u.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-800">{u.nombre}</td>
-                    <td className="px-4 py-3 text-gray-600">{u.email}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-800">{u.nombre}</p>
+                      {u.username && <p className="text-xs text-blue-500 font-mono">@{u.username}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-sm">{u.email}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         u.rol === 'admin' ? 'bg-red-100 text-red-700' :
@@ -346,10 +381,32 @@ export default function Configuracion() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => abrirModalUsuario(u)}
-                        className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-lg text-sm hover:bg-yellow-200">
-                        ✏️ Editar
-                      </button>
+                      <div className="flex gap-1.5 flex-wrap">
+                        <button onClick={() => abrirModalUsuario(u)}
+                          className="bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-lg text-xs hover:bg-yellow-200 font-medium">
+                          ✏️ Editar
+                        </button>
+                        {u.activo ? (
+                          <button onClick={() => desactivarUsuario(u)}
+                            className="bg-orange-100 text-orange-600 px-2.5 py-1 rounded-lg text-xs hover:bg-orange-200 font-medium"
+                            title="Desactivar">
+                            🔕
+                          </button>
+                        ) : (
+                          <button onClick={() => reactivarUsuario(u)}
+                            className="bg-green-100 text-green-600 px-2.5 py-1 rounded-lg text-xs hover:bg-green-200 font-medium"
+                            title="Reactivar">
+                            ✅
+                          </button>
+                        )}
+                        {['auxiliar','veterinario'].includes(u.rol) && (
+                          <button onClick={() => eliminarUsuarioDefinitivo(u)}
+                            className="bg-red-100 text-red-600 px-2.5 py-1 rounded-lg text-xs hover:bg-red-200 font-medium"
+                            title="Eliminar definitivamente">
+                            ❌
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

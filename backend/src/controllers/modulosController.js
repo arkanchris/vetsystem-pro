@@ -213,8 +213,25 @@ const createAdmin = async (req, res) => {
 const deleteAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('UPDATE usuarios SET activo=false WHERE id=$1 AND rol=\'admin\'', [id]);
+    await pool.query("UPDATE usuarios SET activo=false WHERE id=$1 AND rol='admin'", [id]);
     res.json({ mensaje: '✅ Admin desactivado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteAdminDefinitivo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const check = await pool.query('SELECT id, rol FROM usuarios WHERE id=$1', [id]);
+    if (check.rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (check.rows[0].rol === 'master') return res.status(403).json({ error: '❌ No puedes eliminar un máster' });
+    // Limpiar relaciones
+    await pool.query('DELETE FROM modulos_admin WHERE admin_id=$1', [id]);
+    await pool.query('DELETE FROM modulos_auxiliar WHERE auxiliar_id=$1', [id]);
+    await pool.query('UPDATE usuarios SET admin_id=NULL WHERE admin_id=$1', [id]);
+    await pool.query('DELETE FROM usuarios WHERE id=$1', [id]);
+    res.json({ mensaje: '✅ Admin eliminado definitivamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -349,7 +366,7 @@ const cambiarPasswordMaster = async (req, res) => {
 
 module.exports = {
   getClientes, createCliente, updateCliente, deleteCliente,
-  getAdmins, createAdmin, deleteAdmin,
+  getAdmins, createAdmin, deleteAdmin, deleteAdminDefinitivo,
   getModulosAdmin, setModulosAdmin, getTodosModulos,
   getAuxiliaresConModulos, setModulosAuxiliar,
   cambiarPasswordMaster

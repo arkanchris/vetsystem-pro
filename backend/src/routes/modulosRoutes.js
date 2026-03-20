@@ -5,7 +5,7 @@ const path = require('path');
 const { verificarToken, soloMaster, soloAdmin } = require('../middlewares/authMiddleware');
 const {
   getClientes, createCliente, updateCliente, deleteCliente,
-  getAdmins, createAdmin, deleteAdmin,
+  getAdmins, createAdmin, deleteAdmin, deleteAdminDefinitivo,
   getModulosAdmin, setModulosAdmin, getTodosModulos,
   getAuxiliaresConModulos, setModulosAuxiliar,
   cambiarPasswordMaster
@@ -26,7 +26,8 @@ router.delete('/clientes/:id',   verificarToken, soloMaster, deleteCliente);
 // ── ADMINS ────────────────────────────────────────────────────────────────────
 router.get('/admins',            verificarToken, soloMaster, getAdmins);
 router.post('/admins',           verificarToken, soloMaster, createAdmin);
-router.delete('/admins/:id',     verificarToken, soloMaster, deleteAdmin);
+router.delete('/admins/:id',            verificarToken, soloMaster, deleteAdmin);           // desactivar
+router.delete('/admins/:id/eliminar',  verificarToken, soloMaster, deleteAdminDefinitivo);  // eliminar definitivo
 
 // ── MÓDULOS ───────────────────────────────────────────────────────────────────
 router.get('/todos',             verificarToken, soloMaster, getTodosModulos);
