@@ -133,11 +133,23 @@ const updateHospitalizacion = async (req, res) => {
         }
       }
     }
+    // Asegurar tipos correctos para evitar "tipos de dato inconsistentes"
+    const estadoFinal      = String(estado || hosp.estado);
+    const diagFinal        = diagnostico_ingreso || hosp.diagnostico_ingreso || null;
+    const pronosticoFinal  = String(pronostico || hosp.pronostico || 'reservado');
+    const costoDiaFinal    = parseFloat(costo_dia ?? hosp.costo_dia ?? 0) || 0;
+    const notasFinal       = notas_alta || null;
+
     const r = await client.query(
-      `UPDATE hospitalizaciones SET estado=$1,diagnostico_ingreso=$2,pronostico=$3,costo_dia=$4,notas_alta=$5,
-       fecha_alta=CASE WHEN $1!='activo' THEN NOW() ELSE fecha_alta END WHERE id=$6 RETURNING *`,
-      [estado||hosp.estado, diagnostico_ingreso||hosp.diagnostico_ingreso||null, pronostico||hosp.pronostico||'reservado',
-       parseFloat(costo_dia)||parseFloat(hosp.costo_dia)||0, notas_alta||null, id]
+      `UPDATE hospitalizaciones
+       SET estado        = $1::text,
+           diagnostico_ingreso = $2::text,
+           pronostico    = $3::text,
+           costo_dia     = $4::numeric,
+           notas_alta    = $5::text,
+           fecha_alta    = CASE WHEN $1::text <> 'activo' THEN NOW() ELSE fecha_alta END
+       WHERE id = $6::integer RETURNING *`,
+      [estadoFinal, diagFinal || '', pronosticoFinal, costoDiaFinal, notasFinal || '', parseInt(id)]
     );
     await client.query('COMMIT');
     res.json(r.rows[0]);

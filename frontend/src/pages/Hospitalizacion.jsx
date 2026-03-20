@@ -25,10 +25,15 @@ export default function Hospitalizacion() {
   const [nombreDocHosp, setNombreDocHosp]   = useState('');
   const [subiendoHosp, setSubiendoHosp]     = useState(false);
   const docHospRef = useRef(null);
-  const [modalIngreso, setModalIngreso]   = useState(false);
+  const [modalIngreso,  setModalIngreso]    = useState(false);
+  const [modalNuevaJaula, setModalNuevaJaula] = useState(false);
+  const [formNuevaJaula, setFormNuevaJaula] = useState({ numero:'', nombre:'', tipo:'standard', descripcion:'' });
   const [modalEvolucion, setModalEvolucion] = useState(false);
   const [modalMedicamento, setModalMedicamento] = useState(false);
   const [modalAltaMedica, setModalAltaMedica] = useState(false);
+  const [modalGestionJaulas, setModalGestionJaulas] = useState(false);
+  const [editandoJaula, setEditandoJaula]           = useState(null);
+  const [formJaula, setFormJaula] = useState({ numero:'', nombre:'', tipo:'standard', descripcion:'' });
 
   const [formIngreso, setFormIngreso] = useState({ paciente_id:'', jaula_id:'', motivo_ingreso:'', diagnostico_ingreso:'', pronostico:'reservado', costo_dia:'' });
   const [formEvolucion, setFormEvolucion] = useState({ temperatura:'', pulso:'', frecuencia_respiratoria:'', peso:'', estado_general:'estable', descripcion:'', tratamiento_aplicado:'', alimentacion:'normal', hidratacion:'normal' });
@@ -85,6 +90,22 @@ export default function Hospitalizacion() {
       toast.success('✅ Eliminado');
       await cargarHosp(hospSel.id);
     } catch { toast.error('Error'); }
+  };
+
+  const handleSubmitJaula = async (e) => {
+    e.preventDefault();
+    try {
+      if (editandoJaula) {
+        await api.put(`/hospitalizacion/jaulas/${editandoJaula.id}`, { ...formJaula, estado: editandoJaula.estado });
+        toast.success('✅ Jaula actualizada');
+      } else {
+        await api.post('/hospitalizacion/jaulas', formJaula);
+        toast.success('✅ Jaula creada');
+      }
+      setEditandoJaula(null);
+      setFormJaula({ numero:'', nombre:'', tipo:'standard', descripcion:'' });
+      await cargarDatos();
+    } catch (err) { toast.error(err.response?.data?.error || 'Error al guardar jaula'); }
   };
 
   const cargarHosp = async (id) => {
@@ -146,6 +167,17 @@ export default function Hospitalizacion() {
   };
 
   // Cambiar estado de jaula manualmente (libre ↔ en_limpieza ↔ mantenimiento)
+  const crearJaula = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/hospitalizacion/jaulas', formNuevaJaula);
+      toast.success(`✅ Jaula ${formNuevaJaula.numero} creada`);
+      setModalNuevaJaula(false);
+      setFormNuevaJaula({ numero:'', nombre:'', tipo:'standard', descripcion:'' });
+      await cargarDatos();
+    } catch (err) { toast.error(err.response?.data?.error || 'Error al crear jaula'); }
+  };
+
   const cambiarEstadoJaula = async (jaulaId, nuevoEstado) => {
     try {
       const jaula = jaulas.find(j => j.id === jaulaId);
@@ -323,6 +355,14 @@ export default function Hospitalizacion() {
             <div className="bg-white rounded-2xl shadow p-5">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-bold text-gray-800">🗺️ Mapa de Jaulas</h2>
+                <button onClick={() => setModalNuevaJaula(true)}
+                  className="bg-blue-100 text-blue-700 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-200 font-medium">
+                  + Agregar jaula
+                </button>
+                <button onClick={() => { setEditandoJaula(null); setFormJaula({ numero:'', nombre:'', tipo:'standard', descripcion:'' }); setModalGestionJaulas(true); }}
+                  className="bg-blue-100 text-blue-700 text-xs px-3 py-1.5 rounded-lg hover:bg-blue-200 font-medium">
+                  + Agregar jaula
+                </button>
                 <div className="flex gap-2 flex-wrap">
                   {Object.entries(JAULA_COLOR).map(([k,v]) => (
                     <span key={k} className={`text-xs px-2 py-0.5 rounded-full border ${v}`}>
@@ -382,6 +422,9 @@ export default function Hospitalizacion() {
                                 <button onClick={() => cambiarEstadoJaula(j.id, 'mantenimiento')}
                                   className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-200 text-left">⚪ Mantenimiento</button>
                               )}
+                              <hr className="my-0.5 border-gray-100"/>
+                              <button onClick={() => { setEditandoJaula(j); setFormJaula({ numero:j.numero, nombre:j.nombre||'', tipo:j.tipo, descripcion:j.descripcion||'' }); setModalGestionJaulas(true); }}
+                                className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded hover:bg-blue-100 text-left">✏️ Editar jaula</button>
                             </div>
                           )}
                           {/* Mantenimiento también puede aplicarse a jaulas ocupadas */}
@@ -861,6 +904,68 @@ export default function Hospitalizacion() {
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalMedicamento(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700">Cancelar</button>
                 <button type="submit" className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium">Agregar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MODAL NUEVA JAULA ═══════════════════════════════════════════ */}
+      {modalNuevaJaula && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-5 border-b flex justify-between items-center">
+              <h2 className="text-lg font-bold">🏠 Nueva Jaula</h2>
+              <button onClick={() => setModalNuevaJaula(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+            </div>
+            <form onSubmit={crearJaula} className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Número / Código *</label>
+                  <input value={formNuevaJaula.numero}
+                    onChange={e => setFormNuevaJaula(p=>({...p,numero:e.target.value}))}
+                    required placeholder="Ej: J-11, UCI-03..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre (opcional)</label>
+                  <input value={formNuevaJaula.nombre}
+                    onChange={e => setFormNuevaJaula(p=>({...p,nombre:e.target.value}))}
+                    placeholder="Ej: Jaula Grande..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[['standard','🏠 Standard'],['recuperacion','💚 Recuperación'],['uci','🚨 UCI'],['aislamiento','⚠️ Aislamiento']].map(([val,lbl]) => (
+                    <button key={val} type="button"
+                      onClick={() => setFormNuevaJaula(p=>({...p,tipo:val}))}
+                      className={`py-2 px-3 rounded-xl border-2 text-sm font-medium transition ${
+                        formNuevaJaula.tipo === val
+                          ? val==='standard' ? 'border-blue-400 bg-blue-50 text-blue-700'
+                          : val==='recuperacion' ? 'border-teal-400 bg-teal-50 text-teal-700'
+                          : val==='uci' ? 'border-red-400 bg-red-50 text-red-700'
+                          : 'border-orange-400 bg-orange-50 text-orange-700'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <input value={formNuevaJaula.descripcion}
+                  onChange={e => setFormNuevaJaula(p=>({...p,descripcion:e.target.value}))}
+                  placeholder="Dimensiones, características especiales..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setModalNuevaJaula(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
+                <button type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Crear jaula</button>
               </div>
             </form>
           </div>
