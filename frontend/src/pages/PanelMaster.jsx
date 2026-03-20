@@ -3,16 +3,20 @@ import api from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 
 const MODULOS_DEF = [
-  { clave:'dashboard',    nombre:'Dashboard',        icono:'📊', desc:'Panel de resumen' },
-  { clave:'pacientes',    nombre:'Pacientes',        icono:'🐾', desc:'Gestión de mascotas' },
-  { clave:'tutores',      nombre:'Tutores',          icono:'👤', desc:'Propietarios y tutores' },
-  { clave:'historias',    nombre:'Historia Clínica', icono:'📋', desc:'Historial médico' },
-  { clave:'medicamentos', nombre:'Medicamentos',     icono:'💊', desc:'Inventario' },
-  { clave:'citas',        nombre:'Citas',            icono:'📅', desc:'Agenda de citas' },
-  { clave:'adopciones',   nombre:'Adopciones',       icono:'🏠', desc:'Gestión de adopciones' },
-  { clave:'tienda',       nombre:'Tienda',           icono:'🛍️', desc:'Venta de productos' },
-  { clave:'finanzas',     nombre:'Ingresos & Gastos',icono:'💰', desc:'Control financiero' },
-  { clave:'configuracion',nombre:'Configuración',    icono:'⚙️', desc:'Ajustes de clínica' },
+  { clave:'dashboard',      nombre:'Dashboard',        icono:'📊', desc:'Panel de resumen' },
+  { clave:'pacientes',      nombre:'Pacientes',        icono:'🐾', desc:'Gestión de mascotas' },
+  { clave:'tutores',        nombre:'Tutores',          icono:'👤', desc:'Propietarios y tutores' },
+  { clave:'historias',      nombre:'Historia Clínica', icono:'📋', desc:'Historial médico' },
+  { clave:'medicamentos',   nombre:'Medicamentos',     icono:'💊', desc:'Inventario' },
+  { clave:'citas',          nombre:'Citas',            icono:'📅', desc:'Agenda de citas' },
+  { clave:'adopciones',     nombre:'Adopciones',       icono:'🏠', desc:'Gestión de adopciones' },
+  { clave:'tienda',         nombre:'Tienda',           icono:'🛍️', desc:'Venta de productos' },
+  { clave:'finanzas',       nombre:'Ingresos & Gastos',icono:'💰', desc:'Control financiero' },
+  { clave:'configuracion',  nombre:'Configuración',    icono:'⚙️', desc:'Ajustes de clínica' },
+  { clave:'grooming',       nombre:'Estética',         icono:'✂️',  desc:'Estética canina y felina' },
+  { clave:'adiestramiento', nombre:'Adiestramiento',   icono:'🎓', desc:'Escuela de entrenamiento' },
+  { clave:'hospitalizacion',nombre:'Hospitalización',  icono:'🏥', desc:'Pacientes hospitalizados' },
+  { clave:'guarderia',      nombre:'Guardería',        icono:'🏡', desc:'Estancias y cuidado diario' },
 ];
 const OBLIGATORIOS = ['dashboard','configuracion'];
 

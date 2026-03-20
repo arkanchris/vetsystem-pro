@@ -25,6 +25,10 @@ const financieroRoutes    = require('./routes/financieroRoutes');
 const tiendaRoutes        = require('./routes/tiendaRoutes');
 const vacunaRoutes        = require('./routes/vacunaRoutes');
 const modulosRoutes       = require('./routes/modulosRoutes');
+const groomingRoutes      = require('./routes/groomingRoutes');
+const adiestramientoRoutes= require('./routes/adiestramientoRoutes');
+const hospitalizacionRoutes= require('./routes/hospitalizacionRoutes');
+const guarderiaRoutes     = require('./routes/guarderiaRoutes');
 
 app.use('/api/auth',          authRoutes);
 app.use('/api/propietarios',  propietarioRoutes);
@@ -38,7 +42,11 @@ app.use('/api/medicos',       medicoRoutes);
 app.use('/api/finanzas',      financieroRoutes);
 app.use('/api/tienda',        tiendaRoutes);
 app.use('/api/vacunas',       vacunaRoutes);
-app.use('/api/modulos',       modulosRoutes);
+app.use('/api/modulos',          modulosRoutes);
+app.use('/api/grooming',         groomingRoutes);
+app.use('/api/adiestramiento',   adiestramientoRoutes);
+app.use('/api/hospitalizacion',  hospitalizacionRoutes);
+app.use('/api/guarderia',        guarderiaRoutes);
 
 app.get('/', (req, res) => res.json({ mensaje: '🐾 VetSystem Pro API funcionando' }));
 

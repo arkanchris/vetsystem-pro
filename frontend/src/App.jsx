@@ -14,6 +14,10 @@ import Finanzas from './pages/Finanzas';
 import Tienda from './pages/Tienda';
 import Layout from './components/Layout';
 import PanelMaster from './pages/PanelMaster';
+import Grooming from './pages/Grooming';
+import Adiestramiento from './pages/Adiestramiento';
+import Hospitalizacion from './pages/Hospitalizacion';
+import Guarderia from './pages/Guarderia';
 
 function RutaProtegida({ children }) {
   const { usuario, token } = useContext(AuthContext);
@@ -37,7 +41,11 @@ function AppRoutes() {
         <Route path="tienda"        element={<Tienda />} />
         <Route path="finanzas"      element={<Finanzas />} />
         <Route path="configuracion" element={<Configuracion />} />
-        <Route path="master"         element={<PanelMaster />} />
+        <Route path="master"          element={<PanelMaster />} />
+        <Route path="grooming"        element={<Grooming />} />
+        <Route path="adiestramiento"  element={<Adiestramiento />} />
+        <Route path="hospitalizacion" element={<Hospitalizacion />} />
+        <Route path="guarderia"       element={<Guarderia />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

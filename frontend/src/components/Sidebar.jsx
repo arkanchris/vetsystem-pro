@@ -72,7 +72,11 @@ export default function Sidebar() {
         {tieneModulo('medicamentos') && <MenuItem to="/medicamentos" icono="💊" label="Medicamentos" />}
         {tieneModulo('citas')        && <MenuItem to="/citas"        icono="📅" label="Citas" />}
         {tieneModulo('adopciones')   && <MenuItem to="/adopciones"   icono="🏠" label="Adopciones" />}
-        {tieneModulo('tienda')       && <MenuItem to="/tienda"       icono="🛍️" label="Tienda" />}
+        {tieneModulo('tienda')          && <MenuItem to="/tienda"          icono="🛍️" label="Tienda" />}
+        {tieneModulo('grooming')        && <MenuItem to="/grooming"        icono="✂️"  label="Estética" />}
+        {tieneModulo('adiestramiento')  && <MenuItem to="/adiestramiento"  icono="🎓" label="Adiestramiento" />}
+        {tieneModulo('hospitalizacion') && <MenuItem to="/hospitalizacion" icono="🏥" label="Hospitalización" />}
+        {tieneModulo('guarderia')       && <MenuItem to="/guarderia"       icono="🏡" label="Guardería" />}
 
         {tieneModulo('finanzas') && (
           <>
