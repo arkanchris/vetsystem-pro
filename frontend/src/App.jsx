@@ -13,7 +13,8 @@ import Configuracion from './pages/Configuracion';
 import Finanzas from './pages/Finanzas';
 import Tienda from './pages/Tienda';
 import Layout from './components/Layout';
-import PanelMaster from './pages/PanelMaster';
+import PanelMaster    from './pages/PanelMaster';
+import ResetPassword  from './pages/ResetPassword';
 import Grooming from './pages/Grooming';
 import Adiestramiento from './pages/Adiestramiento';
 import Hospitalizacion from './pages/Hospitalizacion';
@@ -28,7 +29,8 @@ function RutaProtegida({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route path="/login"          element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<RutaProtegida><Layout /></RutaProtegida>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard"     element={<Dashboard />} />

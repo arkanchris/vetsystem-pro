@@ -1,123 +1,149 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const pool = require('../config/database');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const crypto  = require('crypto');
+const pool    = require('../config/database');
 require('dotenv').config();
 
-// LOGIN — acepta username O email
-const login = async (req, res) => {
-  const { email, password } = req.body; // "email" puede ser username o email
+// Nodemailer lazy init
+const getMailer = () => {
   try {
-    // Buscar por username O por email
+    const nodemailer = require('nodemailer');
+    return nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.EMAIL_PORT) || 587,
+      secure: false,
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    });
+  } catch { return null; }
+};
+
+// LOGIN
+const login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
     const result = await pool.query(
-      `SELECT * FROM usuarios
-       WHERE (username = $1 OR email = $1) AND activo = true
-       LIMIT 1`,
+      `SELECT * FROM usuarios WHERE (username=$1 OR email=$1) AND activo=true LIMIT 1`,
       [email?.toLowerCase().trim()]
     );
-
     if (result.rows.length === 0)
       return res.status(401).json({ error: '❌ Usuario no encontrado.' });
-
     const usuario = result.rows[0];
     const ok = await bcrypt.compare(password, usuario.password);
     if (!ok) return res.status(401).json({ error: '❌ Contraseña incorrecta.' });
-
     const token = jwt.sign(
-      { id: usuario.id, email: usuario.email, rol: usuario.rol, cliente_id: usuario.cliente_id || null },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
+      { id: usuario.id, email: usuario.email, rol: usuario.rol, cliente_id: usuario.cliente_id||null },
+      process.env.JWT_SECRET, { expiresIn: '8h' }
     );
-
-    // Módulos según rol
     let modulosActivos = [];
     if (usuario.rol === 'master') {
       const mods = await pool.query('SELECT clave FROM modulos ORDER BY orden');
       modulosActivos = mods.rows.map(m => m.clave);
       modulosActivos.push('master');
     } else if (usuario.rol === 'admin') {
-      const mods = await pool.query(
-        `SELECT modulo_clave FROM modulos_admin WHERE admin_id=$1 AND activo=true`, [usuario.id]
-      );
+      const mods = await pool.query(`SELECT modulo_clave FROM modulos_admin WHERE admin_id=$1 AND activo=true`, [usuario.id]);
       modulosActivos = mods.rows.map(m => m.modulo_clave);
       if (!modulosActivos.includes('configuracion')) modulosActivos.push('configuracion');
     } else {
-      const mods = await pool.query(
-        `SELECT modulo_clave FROM modulos_auxiliar WHERE auxiliar_id=$1 AND activo=true`, [usuario.id]
-      );
+      const mods = await pool.query(`SELECT modulo_clave FROM modulos_auxiliar WHERE auxiliar_id=$1 AND activo=true`, [usuario.id]);
       modulosActivos = mods.rows.map(m => m.modulo_clave);
     }
     if (!modulosActivos.includes('dashboard')) modulosActivos.unshift('dashboard');
-
-    res.json({
-      mensaje: '✅ Login exitoso',
-      token,
-      usuario: {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        email: usuario.email,
-        username: usuario.username,
-        rol: usuario.rol,
-        puede_ver_finanzas: usuario.puede_ver_finanzas,
-        clinica_nombre: usuario.clinica_nombre,
-        cliente_id: usuario.cliente_id,
-        modulos: modulosActivos
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: '❌ Error en el servidor.' });
-  }
+    res.json({ mensaje: '✅ Login exitoso', token, usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, username: usuario.username, rol: usuario.rol, puede_ver_finanzas: usuario.puede_ver_finanzas, clinica_nombre: usuario.clinica_nombre, cliente_id: usuario.cliente_id, modulos: modulosActivos } });
+  } catch (err) { console.error(err); res.status(500).json({ error: '❌ Error en el servidor.' }); }
 };
 
-// REGISTRO (interno — usado por authRoutes para auxiliares)
+// SOLICITAR RECUPERACIÓN
+const solicitarRecuperacion = async (req, res) => {
+  const { username, email } = req.body;
+  try {
+    if (!username || !email) return res.status(400).json({ error: '❌ Username y correo son obligatorios.' });
+    const result = await pool.query(
+      `SELECT id, nombre, email, username FROM usuarios WHERE LOWER(username)=LOWER($1) AND LOWER(email)=LOWER($2) AND activo=true LIMIT 1`,
+      [username.trim(), email.trim()]
+    );
+    const RESPUESTA_OK = { mensaje: '✅ Si los datos coinciden, recibirás un correo con instrucciones.' };
+    if (result.rows.length === 0) return res.json(RESPUESTA_OK);
+    const usuario = result.rows[0];
+    await pool.query('DELETE FROM password_reset_tokens WHERE usuario_id=$1', [usuario.id]);
+    const rawToken = crypto.randomBytes(64).toString('hex');
+    const expira = new Date(Date.now() + 60 * 60 * 1000);
+    await pool.query(`INSERT INTO password_reset_tokens (usuario_id, token, expira_en) VALUES ($1,$2,$3)`, [usuario.id, rawToken, expira]);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+    const mailer = getMailer();
+    if (mailer && process.env.EMAIL_USER) {
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:20px}.card{background:#fff;max-width:500px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}.header{background:linear-gradient(135deg,#1e3a5f,#2563eb);padding:30px;text-align:center}.header h1{color:#fff;margin:0;font-size:22px}.body{padding:32px}.body p{color:#555;line-height:1.6;margin:0 0 16px}.btn{display:inline-block;background:#2563eb;color:#fff!important;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:15px;margin:8px 0}.info{background:#f0f7ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:6px;font-size:13px;color:#555;margin:16px 0}.footer{text-align:center;padding:20px;color:#aaa;font-size:12px;border-top:1px solid #eee}</style></head><body><div class="card"><div class="header"><h1>🐾 VetSystem Pro</h1><p style="color:#93c5fd;margin:4px 0 0;font-size:13px">Recuperación de contraseña</p></div><div class="body"><p>Hola, <strong>${usuario.nombre}</strong> 👋</p><p>Recibimos una solicitud para restablecer la contraseña de tu cuenta <strong>@${usuario.username}</strong>.</p><p style="text-align:center"><a href="${resetUrl}" class="btn">🔐 Restablecer mi contraseña</a></p><div class="info">⏰ Este enlace es válido por <strong>1 hora</strong> y solo puede usarse una vez.</div><p>Si no solicitaste este cambio, puedes ignorar este correo.</p></div><div class="footer">VetSystem Pro · Sistema de Gestión Veterinaria</div></div></body></html>`;
+      await mailer.sendMail({ from: process.env.EMAIL_FROM || `VetSystem Pro <${process.env.EMAIL_USER}>`, to: usuario.email, subject: '🔐 Restablecer contraseña — VetSystem Pro', html });
+    } else {
+      console.log(`[DEV] Reset URL: ${resetUrl}`);
+    }
+    res.json(RESPUESTA_OK);
+  } catch (err) { console.error(err); res.status(500).json({ error: '❌ Error al procesar la solicitud.' }); }
+};
+
+// VALIDAR TOKEN
+const validarTokenReset = async (req, res) => {
+  const { token } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT prt.*, u.nombre, u.email, u.username FROM password_reset_tokens prt JOIN usuarios u ON prt.usuario_id=u.id WHERE prt.token=$1 AND prt.usado=false AND prt.expira_en>NOW() LIMIT 1`,
+      [token]
+    );
+    if (result.rows.length === 0) return res.status(400).json({ error: '❌ El enlace es inválido o ha expirado.' });
+    const d = result.rows[0];
+    res.json({ valido: true, nombre: d.nombre, email: d.email, username: d.username });
+  } catch (err) { res.status(500).json({ error: '❌ Error al validar.' }); }
+};
+
+// RESETEAR PASSWORD
+const resetearPassword = async (req, res) => {
+  const { token, nueva_password } = req.body;
+  const client = await pool.connect();
+  try {
+    if (!token || !nueva_password) return res.status(400).json({ error: '❌ Token y contraseña son obligatorios.' });
+    if (nueva_password.length < 6) return res.status(400).json({ error: '❌ Mínimo 6 caracteres.' });
+    await client.query('BEGIN');
+    const result = await client.query(`SELECT * FROM password_reset_tokens WHERE token=$1 AND usado=false AND expira_en>NOW() LIMIT 1`, [token]);
+    if (result.rows.length === 0) { await client.query('ROLLBACK'); return res.status(400).json({ error: '❌ Enlace inválido o expirado.' }); }
+    const rt = result.rows[0];
+    const hash = await bcrypt.hash(nueva_password, 10);
+    await client.query('UPDATE usuarios SET password=$1 WHERE id=$2', [hash, rt.usuario_id]);
+    await client.query('UPDATE password_reset_tokens SET usado=true WHERE id=$1', [rt.id]);
+    await client.query('COMMIT');
+    res.json({ mensaje: '✅ Contraseña actualizada. Ya puedes iniciar sesión.' });
+  } catch (err) { await client.query('ROLLBACK'); console.error(err); res.status(500).json({ error: '❌ Error al cambiar contraseña.' }); }
+  finally { client.release(); }
+};
+
+// REGISTRO
 const registro = async (req, res) => {
   const { nombre, email, password, rol, clinica_nombre, admin_id, username } = req.body;
   try {
-    if (rol === 'master')
-      return res.status(403).json({ error: '❌ No se puede crear rol master desde aquí.' });
-    if (['admin'].includes(rol) && req.usuario?.rol !== 'master')
-      return res.status(403).json({ error: '❌ Solo el Máster puede crear admins.' });
-
+    if (rol === 'master') return res.status(403).json({ error: '❌ No se puede crear rol master.' });
+    if (['admin'].includes(rol) && req.usuario?.rol !== 'master') return res.status(403).json({ error: '❌ Solo el Máster puede crear admins.' });
     const existe = await pool.query('SELECT id FROM usuarios WHERE email=$1', [email]);
-    if (existe.rows.length > 0)
-      return res.status(400).json({ error: '❌ El email ya está registrado.' });
-
-    // Generar username si no viene
+    if (existe.rows.length > 0) return res.status(400).json({ error: '❌ El email ya está registrado.' });
     const usernameBase = username || email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
     const usernameUnico = await generarUsernameUnico(usernameBase);
-
     const hash = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      `INSERT INTO usuarios (nombre, email, username, password, rol, clinica_nombre, admin_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, nombre, email, username, rol`,
-      [nombre, email, usernameUnico, hash, rol||'auxiliar', clinica_nombre||null, admin_id||null]
-    );
+    const result = await pool.query(`INSERT INTO usuarios (nombre, email, username, password, rol, clinica_nombre, admin_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, nombre, email, username, rol`, [nombre, email, usernameUnico, hash, rol||'auxiliar', clinica_nombre||null, admin_id||null]);
     res.status(201).json({ mensaje: '✅ Usuario registrado', usuario: result.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: '❌ Error en el servidor.' });
-  }
+  } catch (err) { console.error(err); res.status(500).json({ error: '❌ Error en el servidor.' }); }
 };
 
-// Perfil
+// PERFIL
 const perfil = async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, nombre, email, username, rol, clinica_nombre, created_at FROM usuarios WHERE id=$1',
-      [req.usuario.id]
-    );
+    const result = await pool.query('SELECT id, nombre, email, username, rol, clinica_nombre, created_at FROM usuarios WHERE id=$1', [req.usuario.id]);
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: '❌ Error en el servidor.' });
-  }
+  } catch (err) { res.status(500).json({ error: '❌ Error.' }); }
 };
 
-// Helper: username único
+// HELPER
 const generarUsernameUnico = async (base) => {
   const limpio = base.toLowerCase().replace(/[^a-z0-9_]/g, '').substring(0, 20);
   const existe = await pool.query('SELECT id FROM usuarios WHERE username=$1', [limpio]);
   if (existe.rows.length === 0) return limpio;
-  // Agregar número
   for (let i = 2; i <= 99; i++) {
     const intento = `${limpio}${i}`;
     const ex = await pool.query('SELECT id FROM usuarios WHERE username=$1', [intento]);
@@ -126,4 +152,4 @@ const generarUsernameUnico = async (base) => {
   return `${limpio}_${Date.now()}`;
 };
 
-module.exports = { login, registro, perfil, generarUsernameUnico };
+module.exports = { login, registro, perfil, generarUsernameUnico, solicitarRecuperacion, validarTokenReset, resetearPassword };

@@ -211,4 +211,9 @@ router.delete('/usuarios/:id/eliminar', verificarToken, soloAdmin, async (req, r
   }
 });
 
+// ── Recuperación de contraseña (rutas públicas, sin token) ──────────────────
+router.post('/recuperar-password',        solicitarRecuperacion);
+router.get('/reset-password/:token',      validarTokenReset);
+router.post('/reset-password',            resetearPassword);
+
 module.exports = router;
