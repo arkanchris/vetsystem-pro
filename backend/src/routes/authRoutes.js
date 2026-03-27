@@ -1,17 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
 const { verificarToken, soloMaster, soloAdmin } = require('../middlewares/authMiddleware');
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
-const { generarUsernameUnico } = require('../controllers/authController');
+const { login, registro, perfil, generarUsernameUnico, solicitarRecuperacion, validarTokenReset, resetearPassword } = require('../controllers/authController');
 
-router.post('/login',   authController.login);
-router.post('/registro', authController.registro);
-router.get('/perfil',   verificarToken, authController.perfil);
+router.post('/login',   login);
+router.post('/registro', registro);
+router.get('/perfil',   verificarToken, perfil);
 
 // Sugerir username basado en nombre + email (para el máster al crear admin)
-router.post('/sugerir-username', verificarToken, soloMaster, async (req, res) => {
+router.post('/sugerir-username', verificarToken, async (req, res) => {
   try {
     const { nombre, email } = req.body;
     // Generar candidatos: de email, de nombre, combinación
@@ -212,8 +211,8 @@ router.delete('/usuarios/:id/eliminar', verificarToken, soloAdmin, async (req, r
 });
 
 // ── Recuperación de contraseña (rutas públicas, sin token) ──────────────────
-router.post('/recuperar-password', authController.solicitarRecuperacion);
-router.get('/reset-password/:token', authController.validarTokenReset);
-router.post('/reset-password', authController.resetearPassword);
+router.post('/recuperar-password',        solicitarRecuperacion);
+router.get('/reset-password/:token',      validarTokenReset);
+router.post('/reset-password',            resetearPassword);
 
 module.exports = router;

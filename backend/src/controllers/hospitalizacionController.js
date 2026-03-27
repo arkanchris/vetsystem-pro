@@ -1,4 +1,17 @@
 const pool = require('../config/database');
+// Helper: obtener cliente_id del usuario
+const getClienteId = async (usuario) => {
+  if (usuario.cliente_id) return usuario.cliente_id;
+  const r = await pool.query('SELECT cliente_id, admin_id FROM usuarios WHERE id=$1', [usuario.id]);
+  if (r.rows[0]?.cliente_id) return r.rows[0].cliente_id;
+  if (r.rows[0]?.admin_id) {
+    const a = await pool.query('SELECT cliente_id FROM usuarios WHERE id=$1', [r.rows[0].admin_id]);
+    return a.rows[0]?.cliente_id || null;
+  }
+  return null;
+};
+
+
 
 // ── JAULAS ────────────────────────────────────────────────────────────────────
 const getJaulas = async (req, res) => {

@@ -1,4 +1,17 @@
 const pool = require('../config/database');
+// Helper: obtener cliente_id del usuario
+const getClienteId = async (usuario) => {
+  if (usuario.cliente_id) return usuario.cliente_id;
+  const r = await pool.query('SELECT cliente_id, admin_id FROM usuarios WHERE id=$1', [usuario.id]);
+  if (r.rows[0]?.cliente_id) return r.rows[0].cliente_id;
+  if (r.rows[0]?.admin_id) {
+    const a = await pool.query('SELECT cliente_id FROM usuarios WHERE id=$1', [r.rows[0].admin_id]);
+    return a.rows[0]?.cliente_id || null;
+  }
+  return null;
+};
+
+
 
 // ── CATEGORÍAS ──────────────────────────────────────────────────────────────
 const getCategorias = async (req, res) => {
@@ -11,10 +24,12 @@ const getCategorias = async (req, res) => {
 // ── MOVIMIENTOS ─────────────────────────────────────────────────────────────
 const getMovimientos = async (req, res) => {
   try {
+    const clienteId = await getClienteId(req.usuario);
+    if (!clienteId) return res.json([]);
     const { desde, hasta, tipo } = req.query;
-    let where = ['1=1'];
-    let params = [];
-    let i = 1;
+    let where = ['m.cliente_id=$1'];
+    let params = [clienteId];
+    let i = 2;
     if (desde) { where.push(`m.fecha >= $${i++}`); params.push(desde); }
     if (hasta) { where.push(`m.fecha <= $${i++}`); params.push(hasta); }
     if (tipo)  { where.push(`m.tipo = $${i++}`); params.push(tipo); }
@@ -33,6 +48,7 @@ const getMovimientos = async (req, res) => {
 
 const createMovimiento = async (req, res) => {
   try {
+    const clienteIdMov = await getClienteId(req.usuario);
     const { tipo, categoria_id, concepto, monto, fecha, referencia_tipo, referencia_id, notas } = req.body;
     const result = await pool.query(`
       INSERT INTO movimientos_financieros (tipo, categoria_id, concepto, monto, fecha, referencia_tipo, referencia_id, usuario_id, notas)
@@ -74,7 +90,7 @@ const getResumen = async (req, res) => {
         COALESCE(SUM(CASE WHEN tipo='gasto' THEN monto ELSE 0 END), 0) as total_gastos,
         COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE -monto END), 0) as utilidad
       FROM movimientos_financieros
-      WHERE fecha BETWEEN $1 AND $2
+      WHERE cliente_id=$1 AND fecha BETWEEN $1 AND $2
     `, [fechaDesde, fechaHasta]);
 
     const porCategoria = await pool.query(`
@@ -91,7 +107,7 @@ const getResumen = async (req, res) => {
 };
 
 // Auto-registrar ingreso cuando se confirma pago de una cita
-const registrarIngresoCita = async (citaId, monto, concepto, usuarioId) => {
+const registrarIngresoCita = async (citaId, monto, concepto, usuarioId, clienteId) => {
   if (!monto || monto <= 0) return;
   try {
     const cat = await pool.query(`SELECT id FROM categorias_financieras WHERE nombre='Consultas veterinarias' LIMIT 1`);

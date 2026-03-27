@@ -19,7 +19,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   const esMaster = usuario?.rol === 'master';
-  const esAdmin  = usuario?.rol === 'admin' || esMaster;
+  const esAdmin  = ['admin','admin_veterinario'].includes(usuario?.rol) || esMaster;
 
   return (
     <aside className="w-56 min-h-screen flex flex-col shadow-2xl"

@@ -1,5 +1,18 @@
 const pool = require('../config/database');
 
+// Helper: obtener cliente_id del usuario
+const getClienteId = async (usuario) => {
+  if (usuario.cliente_id) return usuario.cliente_id;
+  const r = await pool.query('SELECT cliente_id, admin_id FROM usuarios WHERE id=$1', [usuario.id]);
+  if (r.rows[0]?.cliente_id) return r.rows[0].cliente_id;
+  if (r.rows[0]?.admin_id) {
+    const a = await pool.query('SELECT cliente_id FROM usuarios WHERE id=$1', [r.rows[0].admin_id]);
+    return a.rows[0]?.cliente_id || null;
+  }
+  return null;
+};
+
+
 const parseFecha = (fecha) => {
   if (!fecha) return null;
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
@@ -16,11 +29,13 @@ const parsePropietarioId = (val) => {
 
 const getPacientes = async (req, res) => {
   try {
+    const clienteId = await getClienteId(req.usuario);
+    if (!clienteId) return res.json([]);
     const result = await pool.query(`
       SELECT p.*, pr.nombre as propietario_nombre, pr.apellido as propietario_apellido
       FROM pacientes p LEFT JOIN propietarios pr ON p.propietario_id = pr.id
-      WHERE p.activo = true ORDER BY p.created_at DESC
-    `);
+      WHERE p.activo = true AND p.cliente_id = $1 ORDER BY p.created_at DESC
+    `, [clienteId]);
     res.json(result.rows);
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
@@ -94,13 +109,14 @@ const getHojaVida = async (req, res) => {
 const createPaciente = async (req, res) => {
   try {
     const { nombre, especie, raza, sexo, fecha_nacimiento, fecha_nac_texto, color, peso, propietario_id, tipo_ingreso } = req.body;
+    const clienteIdCreate = await getClienteId(req.usuario);
     if (!nombre || !especie) return res.status(400).json({ error: 'Nombre y especie requeridos' });
     const foto_url = req.file ? `/uploads/${req.file.filename}` : null;
     const result = await pool.query(`
-      INSERT INTO pacientes (nombre, especie, raza, sexo, fecha_nacimiento, fecha_nac_texto, color, peso, foto_url, propietario_id, tipo_ingreso)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *
+      INSERT INTO pacientes (nombre, especie, raza, sexo, fecha_nacimiento, fecha_nac_texto, color, peso, foto_url, propietario_id, tipo_ingreso, cliente_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *
     `, [nombre, especie, raza||null, sexo||null, parseFecha(fecha_nacimiento), fecha_nac_texto||null,
-        color||null, peso ? parseFloat(peso) : null, foto_url, parsePropietarioId(propietario_id), tipo_ingreso||'con_tutor']);
+        color||null, peso ? parseFloat(peso) : null, foto_url, parsePropietarioId(propietario_id), tipo_ingreso||'con_tutor', clienteIdCreate]);
 
     if (['callejero','comunitario','abandonado'].includes(tipo_ingreso)) {
       const existe = await pool.query('SELECT id FROM adopciones WHERE paciente_id=$1', [result.rows[0].id]);
@@ -118,10 +134,10 @@ const updatePaciente = async (req, res) => {
     let q, p;
     if (req.file) {
       q = `UPDATE pacientes SET nombre=$1,especie=$2,raza=$3,sexo=$4,fecha_nacimiento=$5,fecha_nac_texto=$6,color=$7,peso=$8,propietario_id=$9,tipo_ingreso=$10,foto_url=$11 WHERE id=$12 RETURNING *`;
-      p = [nombre, especie, raza||null, sexo||null, parseFecha(fecha_nacimiento), fecha_nac_texto||null, color||null, peso?parseFloat(peso):null, parsePropietarioId(propietario_id), tipo_ingreso||'con_tutor', `/uploads/${req.file.filename}`, id];
+      p = [nombre, especie, raza||null, sexo||null, parseFecha(fecha_nacimiento), fecha_nac_texto||null, color||null, peso?parseFloat(peso):null, parsePropietarioId(propietario_id), tipo_ingreso||'con_tutor', clienteIdCreate, `/uploads/${req.file.filename}`, id];
     } else {
       q = `UPDATE pacientes SET nombre=$1,especie=$2,raza=$3,sexo=$4,fecha_nacimiento=$5,fecha_nac_texto=$6,color=$7,peso=$8,propietario_id=$9,tipo_ingreso=$10 WHERE id=$11 RETURNING *`;
-      p = [nombre, especie, raza||null, sexo||null, parseFecha(fecha_nacimiento), fecha_nac_texto||null, color||null, peso?parseFloat(peso):null, parsePropietarioId(propietario_id), tipo_ingreso||'con_tutor', id];
+      p = [nombre, especie, raza||null, sexo||null, parseFecha(fecha_nacimiento), fecha_nac_texto||null, color||null, peso?parseFloat(peso):null, parsePropietarioId(propietario_id), tipo_ingreso||'con_tutor', clienteIdCreate, id];
     }
     const result = await pool.query(q, p);
     if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
@@ -149,7 +165,7 @@ const searchPacientes = async (req, res) => {
     const result = await pool.query(`
       SELECT p.*, pr.nombre as propietario_nombre, pr.apellido as propietario_apellido
       FROM pacientes p LEFT JOIN propietarios pr ON p.propietario_id = pr.id
-      WHERE p.activo=true AND (p.nombre ILIKE $1 OR p.especie ILIKE $1 OR p.raza ILIKE $1)
+      WHERE p.activo=true AND p.cliente_id=$2 AND (p.nombre ILIKE $1 OR p.especie ILIKE $1 OR p.raza ILIKE $1)
     `, [`%${q}%`]);
     res.json(result.rows);
   } catch (error) { res.status(500).json({ error: error.message }); }

@@ -45,7 +45,7 @@ export default function PanelMaster() {
   const logoRef = useRef(null);
 
   // Form admin con username
-  const [formAdmin, setFormAdmin] = useState({ nombre:'', email:'', username:'', password:'', confirmar:'' });
+  const [formAdmin, setFormAdmin] = useState({ nombre:'', email:'', username:'', password:'', confirmar:'', rol:'admin' });
   const [editandoAdmin, setEditandoAdmin] = useState(null);
   const [modalVerAdmin, setModalVerAdmin] = useState(null); // para ver info
   const [sugerencias, setSugerencias]   = useState([]);
@@ -296,6 +296,7 @@ Se borrarán todos sus datos y permisos.`)) return;
       await api.post('/modulos/admins', {
         nombre: formAdmin.nombre, email: formAdmin.email,
         username: formAdmin.username, password: formAdmin.password,
+        rol: formAdmin.rol || 'admin',
         cliente_id: clienteSel?.id, clinica_nombre: clienteSel?.nombre
       });
       toast.success(`✅ Admin creado — Login: ${formAdmin.username}`);
@@ -490,7 +491,7 @@ Se borrarán todos sus datos y permisos.`)) return;
                               <p className="font-medium text-gray-800 text-sm">{a.nombre}</p>
                               <p className="text-xs text-gray-400">{a.email}</p>
                               {a.username && (
-                                <p className="text-xs text-blue-500 font-mono">@{a.username}</p>
+                                <p className="text-xs text-blue-500 font-mono">{a.username}</p>
                               )}
                             </div>
                           </div>
@@ -544,7 +545,7 @@ Se borrarán todos sus datos y permisos.`)) return;
                     <div className="flex justify-between items-center mb-4">
                       <div>
                         <h3 className="font-bold text-gray-800">🔧 Módulos habilitados</h3>
-                        <p className="text-xs text-gray-400">Para @{adminSel.username || adminSel.nombre}</p>
+                        <p className="text-xs text-gray-400">Para {adminSel.username || adminSel.nombre}</p>
                       </div>
                       <p className="text-2xl font-bold text-blue-600">
                         {MODULOS_DEF.filter(m => OBLIGATORIOS.includes(m.clave) || modulosState[m.clave]).length}
@@ -736,6 +737,33 @@ Se borrarán todos sus datos y permisos.`)) return;
                   required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
 
+              {/* ROL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de usuario *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button"
+                    onClick={() => setFormAdmin(p => ({...p, rol:'admin'}))}
+                    className={`py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition ${
+                      formAdmin.rol === 'admin'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}>
+                    <p>👤 Administrador</p>
+                    <p className="text-xs font-normal mt-0.5 opacity-70">Gestión y configuración</p>
+                  </button>
+                  <button type="button"
+                    onClick={() => setFormAdmin(p => ({...p, rol:'admin_veterinario'}))}
+                    className={`py-2.5 px-3 rounded-xl border-2 text-sm font-medium transition ${
+                      formAdmin.rol === 'admin_veterinario'
+                        ? 'border-teal-500 bg-teal-50 text-teal-700'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}>
+                    <p>🩺 Admin Veterinario</p>
+                    <p className="text-xs font-normal mt-0.5 opacity-70">Gestión + atención clínica</p>
+                  </button>
+                </div>
+              </div>
+
               {/* USERNAME */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -743,10 +771,9 @@ Se borrarán todos sus datos y permisos.`)) return;
                   <span className="text-gray-400 font-normal text-xs ml-1">— con esto ingresará al sistema</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-gray-400 text-sm">@</span>
                   <input value={formAdmin.username} onChange={e => handleUsernameChange(e.target.value)}
                     required placeholder="usuario.login"
-                    className={`w-full pl-7 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm font-mono ${
+                    className={`w-full px-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm font-mono ${
                       checkUsername==='ok' ? 'border-green-400 focus:ring-green-300' :
                       checkUsername==='taken' ? 'border-red-400 focus:ring-red-300' :
                       'border-gray-300 focus:ring-blue-500'
@@ -769,7 +796,7 @@ Se borrarán todos sus datos y permisos.`)) return;
                         <button key={s} type="button"
                           onClick={() => { setFormAdmin(p => ({...p, username: s})); verificarUsername(s); setSugerencias([]); }}
                           className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 font-mono">
-                          @{s}
+                          {s}
                         </button>
                       ))}
                     </div>
@@ -796,8 +823,8 @@ Se borrarán todos sus datos y permisos.`)) return;
 
               {!editandoAdmin ? (
                 <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
-                  💡 El cliente usará <b>@{formAdmin.username || 'su_usuario'}</b> + contraseña para entrar al sistema.
-                  Recuerda activar los módulos antes de entregar las credenciales.
+                  💡 El cliente usará <b>{formAdmin.username || 'su_usuario'}</b> + contraseña para entrar.
+                  Tipo: <b>{formAdmin.rol === 'admin_veterinario' ? 'Admin Veterinario' : 'Administrador'}</b>
                 </div>
               ) : (
                 <div className="bg-yellow-50 rounded-lg p-3 text-xs text-yellow-700">
@@ -843,7 +870,7 @@ Se borrarán todos sus datos y permisos.`)) return;
               <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Usuario (login)</span>
-                  <span className="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-0.5 rounded">@{modalVerAdmin.username || 'sin username'}</span>
+                  <span className="font-mono text-sm text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{modalVerAdmin.username || 'sin username'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Email</span>
@@ -861,7 +888,7 @@ Se borrarán todos sus datos y permisos.`)) return;
 
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-700">
                 🔑 <b>Credenciales de acceso:</b><br/>
-                Usuario: <span className="font-mono">@{modalVerAdmin.username || modalVerAdmin.email}</span><br/>
+                Usuario: <span className="font-mono">{modalVerAdmin.username || modalVerAdmin.email}</span><br/>
                 (Contraseña definida al crear el usuario)
               </div>
 

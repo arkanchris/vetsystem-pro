@@ -1,13 +1,13 @@
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 const { verificarToken } = require('../middlewares/authMiddleware');
-const { getPropietarios, getPropietarioById, createPropietario, updatePropietario, deletePropietario, searchPropietarios } = require('../controllers/propietarioController');
+const ctrl = require('../controllers/propietarioController');
 
-router.get('/', verificarToken, getPropietarios);
-router.get('/search', verificarToken, searchPropietarios);
-router.get('/:id', verificarToken, getPropietarioById);
-router.post('/', verificarToken, createPropietario);
-router.put('/:id', verificarToken, updatePropietario);
-router.delete('/:id', verificarToken, deletePropietario);
+router.get('/',           verificarToken, ctrl.getAll);
+router.get('/buscar',     verificarToken, ctrl.buscar);
+router.get('/:id',        verificarToken, ctrl.getById);
+router.post('/',          verificarToken, ctrl.create);
+router.put('/:id',        verificarToken, ctrl.update);
+router.delete('/:id',     verificarToken, ctrl.remove);
 
 module.exports = router;

@@ -187,8 +187,8 @@ const createAdmin = async (req, res) => {
     await client.query('BEGIN');
     const result = await client.query(
       `INSERT INTO usuarios (nombre, email, username, password, rol, activo, cliente_id, clinica_nombre, puede_ver_finanzas)
-       VALUES ($1,$2,$3,$4,'admin',true,$5,$6,true) RETURNING id, nombre, email, username, rol`,
-      [nombre, email, usernameUnico, hash, cliente_id||null, clinica_nombre||null]
+       VALUES ($1,$2,$3,$4,$7::text,true,$5,$6,true) RETURNING id, nombre, email, username, rol`,
+      [nombre, email, usernameUnico, hash, cliente_id||null, clinica_nombre||null, rol||'admin']
     );
 
     const adminId = result.rows[0].id;
@@ -303,7 +303,7 @@ const getAuxiliaresConModulos = async (req, res) => {
     const clavesAdmin = modulosAdmin.rows.map(m => m.modulo_clave);
     const auxiliares = await pool.query(
       `SELECT id, nombre, email, username, activo, rol FROM usuarios
-       WHERE cliente_id=$1 AND rol IN ('auxiliar','veterinario') ORDER BY nombre`,
+       WHERE cliente_id=$1 AND rol IN ('auxiliar','veterinario','admin_veterinario') ORDER BY nombre`,
       [cliente_id]
     );
     for (const aux of auxiliares.rows) {

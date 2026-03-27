@@ -21,7 +21,7 @@ const soloMaster = (req, res, next) => {
 };
 
 const soloAdmin = (req, res, next) => {
-  if (!['master','admin'].includes(req.usuario?.rol))
+  if (!['master','admin','admin_veterinario'].includes(req.usuario?.rol))
     return res.status(403).json({ error: '❌ Se requiere rol admin o superior.' });
   next();
 };

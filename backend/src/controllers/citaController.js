@@ -1,4 +1,17 @@
 const pool = require('../config/database');
+// Helper: obtener cliente_id del usuario
+const getClienteId = async (usuario) => {
+  if (usuario.cliente_id) return usuario.cliente_id;
+  const r = await pool.query('SELECT cliente_id, admin_id FROM usuarios WHERE id=$1', [usuario.id]);
+  if (r.rows[0]?.cliente_id) return r.rows[0].cliente_id;
+  if (r.rows[0]?.admin_id) {
+    const a = await pool.query('SELECT cliente_id FROM usuarios WHERE id=$1', [r.rows[0].admin_id]);
+    return a.rows[0]?.cliente_id || null;
+  }
+  return null;
+};
+
+
 
 const parseFechaCita = (fecha) => {
   if (!fecha) return null;
@@ -12,6 +25,8 @@ const parseFechaCita = (fecha) => {
 
 const getCitas = async (req, res) => {
   try {
+    const clienteId = await getClienteId(req.usuario);
+    if (!clienteId) return res.json([]);
     const result = await pool.query(`
       SELECT c.*,
              p.nombre as paciente_nombre, p.especie as paciente_especie,
@@ -21,8 +36,9 @@ const getCitas = async (req, res) => {
       FROM citas c
       LEFT JOIN pacientes p ON c.paciente_id = p.id
       LEFT JOIN propietarios pr ON p.propietario_id = pr.id
+      WHERE c.cliente_id=$1
       ORDER BY c.fecha_cita DESC
-    `);
+    `, [clienteId]);
     res.json(result.rows);
   } catch (error) {
     console.error('Error getCitas:', error);
@@ -74,6 +90,7 @@ const checkDisponibilidad = async (req, res) => {
 
 const createCita = async (req, res) => {
   try {
+    const clienteIdCita = await getClienteId(req.usuario);
     const {
       paciente_id, fecha_cita, motivo, estado, notas,
       costo, estado_pago, metodo_pago

@@ -5,7 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 
 export default function Configuracion() {
   const { usuario } = useContext(AuthContext);
-  const esAdmin = usuario?.rol === 'admin';
+  const esAdmin = ['admin','admin_veterinario'].includes(usuario?.rol);
 
   const [tab, setTab] = useState('clinica');
   const [config, setConfig] = useState({});
@@ -19,9 +19,18 @@ export default function Configuracion() {
   const firmaRef = useRef(null);
 
   // Modal usuario
-  const [modalUsuario, setModalUsuario] = useState(false);
+  const [modalUsuario, setModalUsuario]   = useState(false);
   const [editandoUsuario, setEditandoUsuario] = useState(null);
-  const [formUsuario, setFormUsuario] = useState({ nombre: '', email: '', password: '', rol: 'auxiliar', activo: true, puede_ver_finanzas: false });
+  const [formUsuario, setFormUsuario]     = useState({ nombre:'', email:'', username:'', password:'', rol:'auxiliar', activo:true, puede_ver_finanzas:false });
+  const [usernameSugerido, setUsernameSugerido] = useState('');
+  const [usernameDisponible, setUsernameDisponible] = useState(null); // null=sin verificar, true, false
+  const [verificandoUsername, setVerificandoUsername] = useState(false);
+
+  // Módulos del auxiliar
+  const [modalModulosAux, setModalModulosAux] = useState(false);
+  const [auxSelModulos, setAuxSelModulos]     = useState(null); // usuario seleccionado
+  const [modulosAux, setModulosAux]           = useState([]);   // módulos disponibles con estado
+  const [guardandoModulos, setGuardandoModulos] = useState(false);
 
   // Modal médico
   const [modalMedico, setModalMedico] = useState(false);
@@ -32,6 +41,62 @@ export default function Configuracion() {
   const firmaRefMedico = useRef(null);
 
   useEffect(() => { cargarTodo(); }, []);
+  useEffect(() => { cargarTodo(); }, []);
+
+  // Sugerir username cuando cambia nombre o email
+  const sugerirUsername = async (nombre, email) => {
+    if (!nombre && !email) return;
+    try {
+      const r = await api.post('/auth/sugerir-username', { nombre, email });
+      const sug = r.data.sugerencias?.[0] || '';
+      setUsernameSugerido(sug);
+      if (!formUsuario.username || formUsuario.username === usernameSugerido) {
+        setFormUsuario(prev => ({ ...prev, username: sug }));
+        setUsernameDisponible(null);
+      }
+    } catch {}
+  };
+
+  // Verificar disponibilidad de username
+  const verificarUsername = async (username) => {
+    if (!username || username.length < 3) { setUsernameDisponible(null); return; }
+    setVerificandoUsername(true);
+    try {
+      const r = await api.get(`/auth/verificar-username/${username}`);
+      setUsernameDisponible(r.data.disponible);
+    } catch { setUsernameDisponible(null); }
+    finally { setVerificandoUsername(false); }
+  };
+
+  // Abrir modal de módulos para un auxiliar
+  const abrirModulosAux = async (usuario) => {
+    setAuxSelModulos(usuario);
+    try {
+      const r = await api.get('/modulos/auxiliares');
+      // Buscar módulos de este auxiliar específico
+      const aux = r.data.auxiliares?.find(a => a.id === usuario.id);
+      setModulosAux(aux?.modulos || r.data.auxiliares?.[0]?.modulos || []);
+      // Si no tiene módulos cargados, construir desde modulos_disponibles
+      if (!aux?.modulos?.length && r.data.modulos_disponibles?.length) {
+        const mods = r.data.modulos_disponibles.map(clave => ({
+          clave, nombre: clave, activo: false
+        }));
+        setModulosAux(mods);
+      }
+      setModalModulosAux(true);
+    } catch { toast.error('Error al cargar módulos'); }
+  };
+
+  const guardarModulosAux = async () => {
+    if (!auxSelModulos) return;
+    setGuardandoModulos(true);
+    try {
+      await api.post(`/modulos/auxiliar/${auxSelModulos.id}`, { modulos: modulosAux });
+      toast.success('✅ Módulos guardados');
+      setModalModulosAux(false);
+    } catch { toast.error('Error al guardar módulos'); }
+    finally { setGuardandoModulos(false); }
+  };
 
   const cargarTodo = async () => {
     try {
@@ -361,7 +426,7 @@ export default function Configuracion() {
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-800">{u.nombre}</p>
-                      {u.username && <p className="text-xs text-blue-500 font-mono">@{u.username}</p>}
+                      {u.username && <p className="text-xs text-blue-500 font-mono">{u.username}</p>}
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-sm">{u.email}</td>
                     <td className="px-4 py-3">
@@ -496,67 +561,179 @@ export default function Configuracion() {
       {/* ═══ MODAL USUARIO ════════════════════════════════════════════════ */}
       {modalUsuario && esAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b">
               <h2 className="text-lg font-bold text-gray-800">{editandoUsuario ? '✏️ Editar Usuario' : '👤 Nuevo Usuario'}</h2>
             </div>
             <form onSubmit={handleSubmitUsuario} className="p-5 space-y-4">
+
+              {/* Nombre */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                <input value={formUsuario.nombre} onChange={e => setFormUsuario({...formUsuario, nombre: e.target.value})}
-                  required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+                <input value={formUsuario.nombre}
+                  onChange={e => {
+                    const nombre = e.target.value;
+                    setFormUsuario(p => ({...p, nombre}));
+                    if (!editandoUsuario) sugerirUsername(nombre, formUsuario.email);
+                  }}
+                  required placeholder="Ej: María García"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
+
+              {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input type="email" value={formUsuario.email} onChange={e => setFormUsuario({...formUsuario, email: e.target.value})}
-                  required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="email" value={formUsuario.email}
+                  onChange={e => {
+                    const email = e.target.value;
+                    setFormUsuario(p => ({...p, email}));
+                    if (!editandoUsuario) sugerirUsername(formUsuario.nombre, email);
+                  }}
+                  required placeholder="correo@ejemplo.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
+
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre de usuario *
+                  <span className="text-xs text-gray-400 font-normal ml-1">(para iniciar sesión)</span>
+                </label>
+                <div className="relative">
+                  <input value={formUsuario.username}
+                    onChange={e => {
+                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g,'');
+                      setFormUsuario(p => ({...p, username: val}));
+                      if (val.length >= 3) verificarUsername(val);
+                      else setUsernameDisponible(null);
+                    }}
+                    required placeholder="nombreusuario"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 pr-10 ${
+                      usernameDisponible === true  ? 'border-green-400 focus:ring-green-400' :
+                      usernameDisponible === false ? 'border-red-400 focus:ring-red-400' :
+                      'border-gray-300 focus:ring-blue-500'
+                    }`}/>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+                    {verificandoUsername ? '⏳' : usernameDisponible === true ? '✅' : usernameDisponible === false ? '❌' : ''}
+                  </span>
+                </div>
+                {usernameDisponible === false && (
+                  <p className="text-xs text-red-500 mt-1">Este nombre de usuario ya está en uso</p>
+                )}
+                {usernameDisponible === true && !editandoUsuario && (
+                  <p className="text-xs text-green-600 mt-1">✅ Disponible</p>
+                )}
+                {usernameSugerido && !editandoUsuario && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Sugerencia: <button type="button" onClick={() => { setFormUsuario(p=>({...p,username:usernameSugerido})); verificarUsername(usernameSugerido); }}
+                      className="text-blue-500 hover:underline font-mono">{usernameSugerido}</button>
+                  </p>
+                )}
+              </div>
+
+              {/* Contraseña */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {editandoUsuario ? 'Contraseña (dejar en blanco para no cambiar)' : 'Contraseña *'}
                 </label>
-                <input type="password" value={formUsuario.password} onChange={e => setFormUsuario({...formUsuario, password: e.target.value})}
-                  required={!editandoUsuario}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input type="password" value={formUsuario.password}
+                  onChange={e => setFormUsuario(p=>({...p, password: e.target.value}))}
+                  required={!editandoUsuario} placeholder="••••••••"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
+
+              {/* Rol */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
-                <select value={formUsuario.rol} onChange={e => setFormUsuario({...formUsuario, rol: e.target.value})}
+                <select value={formUsuario.rol} onChange={e => setFormUsuario(p=>({...p, rol: e.target.value}))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="auxiliar">Auxiliar</option>
                   <option value="veterinario">Veterinario</option>
                 </select>
               </div>
-              {/* Permisos extra */}
+
+              {/* Permisos */}
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-2">
                 <p className="text-sm font-semibold text-blue-700">🔐 Permisos adicionales</p>
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox" checked={formUsuario.puede_ver_finanzas}
-                    onChange={e => setFormUsuario({...formUsuario, puede_ver_finanzas: e.target.checked})}
-                    className="w-4 h-4 accent-blue-600" />
+                    onChange={e => setFormUsuario(p=>({...p, puede_ver_finanzas: e.target.checked}))}
+                    className="w-4 h-4 accent-blue-600"/>
                   <div>
                     <p className="text-sm font-medium text-gray-800">Ver módulo de Finanzas</p>
-                    <p className="text-xs text-gray-500">Permite ver ingresos, gastos y reportes financieros</p>
+                    <p className="text-xs text-gray-500">Permite acceder a ingresos y gastos</p>
                   </div>
                 </label>
               </div>
-              <div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={formUsuario.activo}
-                    onChange={e => setFormUsuario({...formUsuario, activo: e.target.checked})}
-                    className="w-4 h-4 accent-blue-600" />
-                  <span className="text-sm font-medium text-gray-700">Usuario activo</span>
-                </label>
-              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={formUsuario.activo}
+                  onChange={e => setFormUsuario(p=>({...p, activo: e.target.checked}))}
+                  className="w-4 h-4 accent-blue-600"/>
+                <span className="text-sm font-medium text-gray-700">Usuario activo</span>
+              </label>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalUsuario(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
-                <button type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                <button type="submit" disabled={usernameDisponible === false}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50">
                   {editandoUsuario ? 'Actualizar' : 'Crear usuario'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MODAL MÓDULOS AUXILIAR ════════════════════════════════════════════ */}
+      {modalModulosAux && auxSelModulos && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+            <div className="p-5 border-b flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">🔐 Módulos — {auxSelModulos.nombre}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Solo puedes habilitar módulos activos en tu plan</p>
+              </div>
+              <button onClick={() => setModalModulosAux(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+            </div>
+            <div className="p-5 space-y-3">
+              {modulosAux.length === 0 ? (
+                <p className="text-center text-gray-400 py-6">No hay módulos disponibles</p>
+              ) : (
+                modulosAux.map(mod => (
+                  <div key={mod.clave} className={`flex items-center justify-between p-3 rounded-xl border ${
+                    mod.activo ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{mod.icono || '📦'}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{mod.nombre || mod.clave}</p>
+                        <p className="text-xs text-gray-500 capitalize">{mod.clave}</p>
+                      </div>
+                    </div>
+                    {/* Toggle switch */}
+                    <button type="button" onClick={() => setModulosAux(prev =>
+                      prev.map(m => m.clave === mod.clave ? {...m, activo: !m.activo} : m)
+                    )} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      mod.activo ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        mod.activo ? 'translate-x-6' : 'translate-x-1'
+                      }`}/>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="p-5 border-t flex gap-3">
+              <button onClick={() => setModalModulosAux(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancelar</button>
+              <button onClick={guardarModulosAux} disabled={guardandoModulos}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50">
+                {guardandoModulos ? '⏳ Guardando...' : '💾 Guardar módulos'}
+              </button>
+            </div>
           </div>
         </div>
       )}

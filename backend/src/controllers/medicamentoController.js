@@ -1,4 +1,17 @@
 const pool = require('../config/database');
+// Helper: obtener cliente_id del usuario
+const getClienteId = async (usuario) => {
+  if (usuario.cliente_id) return usuario.cliente_id;
+  const r = await pool.query('SELECT cliente_id, admin_id FROM usuarios WHERE id=$1', [usuario.id]);
+  if (r.rows[0]?.cliente_id) return r.rows[0].cliente_id;
+  if (r.rows[0]?.admin_id) {
+    const a = await pool.query('SELECT cliente_id FROM usuarios WHERE id=$1', [r.rows[0].admin_id]);
+    return a.rows[0]?.cliente_id || null;
+  }
+  return null;
+};
+
+
 
 const parseFecha = (fecha) => {
   if (!fecha) return null;
@@ -11,7 +24,12 @@ const parseFecha = (fecha) => {
 
 const getMedicamentos = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM medicamentos WHERE activo = true ORDER BY nombre ASC');
+    const clienteId = await getClienteId(req.usuario);
+    if (!clienteId) return res.json([]);
+    const result = await pool.query(
+      'SELECT * FROM medicamentos WHERE activo=true AND cliente_id=$1 ORDER BY nombre ASC',
+      [clienteId]
+    );
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -30,6 +48,7 @@ const getMedicamentoById = async (req, res) => {
 
 const createMedicamento = async (req, res) => {
   try {
+    const clienteIdCreate = await getClienteId(req.usuario);
     const { nombre, descripcion, categoria, unidad, stock, stock_minimo, precio_compra, precio_venta, precio, fecha_vencimiento } = req.body;
     if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
 
@@ -37,8 +56,8 @@ const createMedicamento = async (req, res) => {
     const pVenta  = parseFloat(precio_venta)  || parseFloat(precio) || 0;
 
     const result = await pool.query(`
-      INSERT INTO medicamentos (nombre, descripcion, categoria, unidad, stock, stock_minimo, precio, precio_compra, precio_venta, fecha_vencimiento)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
+      INSERT INTO medicamentos (nombre, descripcion, categoria, unidad, stock, stock_minimo, precio, precio_compra, precio_venta, fecha_vencimiento, cliente_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *
     `, [
       nombre, descripcion||null, categoria||null, unidad||null,
       parseFloat(stock)||0, parseFloat(stock_minimo)||0,
