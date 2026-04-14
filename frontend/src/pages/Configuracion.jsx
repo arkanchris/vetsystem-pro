@@ -28,6 +28,13 @@ export default function Configuracion() {
 
   // Módulos del auxiliar
   const [modalModulosAux, setModalModulosAux] = useState(false);
+  // Mi firma
+  const [firmaCanvas, setFirmaCanvas]     = useState(null);
+  const [dibujandoFirma, setDibujandoFirma] = useState(false);
+  const [firmaDibujada, setFirmaDibujada] = useState(false);
+  const [cargo, setCargo]                 = useState(usuario?.cargo || '');
+  const [guardandoFirma, setGuardandoFirma] = useState(false);
+  const firmaCanvasRef = useRef(null);
   const [auxSelModulos, setAuxSelModulos]     = useState(null); // usuario seleccionado
   const [modulosAux, setModulosAux]           = useState([]);   // módulos disponibles con estado
   const [guardandoModulos, setGuardandoModulos] = useState(false);
@@ -239,9 +246,10 @@ export default function Configuracion() {
   };
 
   const TABS = [
-    { id: 'clinica', label: '🏥 Clínica', solo_admin: false },
-    { id: 'medicos', label: '👨‍⚕️ Médicos', solo_admin: false },
-    { id: 'usuarios', label: '👥 Usuarios', solo_admin: true },
+    { id: 'clinica',  label: '🏥 Clínica',   solo_admin: false },
+    { id: 'medicos',  label: '👨‍⚕️ Médicos',  solo_admin: false },
+    { id: 'usuarios', label: '👥 Usuarios',  solo_admin: true  },
+    { id: 'firma',    label: '✒️ Mi Firma',  solo_admin: false },
   ];
 
   return (

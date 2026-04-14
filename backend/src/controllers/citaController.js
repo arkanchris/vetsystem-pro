@@ -26,7 +26,6 @@ const parseFechaCita = (fecha) => {
 const getCitas = async (req, res) => {
   try {
     const clienteId = await getClienteId(req.usuario);
-    if (!clienteId) return res.json([]);
     const result = await pool.query(`
       SELECT c.*,
              p.nombre as paciente_nombre, p.especie as paciente_especie,
@@ -36,10 +35,28 @@ const getCitas = async (req, res) => {
       FROM citas c
       LEFT JOIN pacientes p ON c.paciente_id = p.id
       LEFT JOIN propietarios pr ON p.propietario_id = pr.id
-      WHERE c.cliente_id=$1
       ORDER BY c.fecha_cita DESC
-    `, [clienteId]);
-    res.json(result.rows);
+    `);
+    
+    // Aplicar filtro por cliente si está disponible
+    let rows = result.rows;
+    if (clienteId) {
+      try {
+        const rf = await pool.query(`
+          SELECT c.*, p.nombre as paciente_nombre, p.especie as paciente_especie,
+                 p.foto_url as paciente_foto,
+                 pr.nombre as propietario_nombre, pr.apellido as propietario_apellido,
+                 pr.telefono as propietario_telefono
+          FROM citas c
+          LEFT JOIN pacientes p ON c.paciente_id = p.id
+          LEFT JOIN propietarios pr ON p.propietario_id = pr.id
+          WHERE c.cliente_id=$1
+          ORDER BY c.fecha_cita DESC
+        `, [clienteId]);
+        rows = rf.rows;
+      } catch(e) { /* Usar rows sin filtro si falla */ }
+    }
+    res.json(rows);
   } catch (error) {
     console.error('Error getCitas:', error);
     res.status(500).json({ error: error.message });

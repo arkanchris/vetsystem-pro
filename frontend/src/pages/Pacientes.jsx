@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 
 const ADOPCION_BADGE = {
@@ -31,10 +32,12 @@ const MODOS_FECHA = [
 ];
 
 export default function Pacientes() {
+  const navigate = useNavigate();
   const [pacientes, setPacientes] = useState([]);
   const [tutores, setTutores] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [pacienteNuevoId, setPacienteNuevoId] = useState(null); // para redirigir a ficha
   const [busqueda, setBusqueda] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [pacienteEditando, setPacienteEditando] = useState(null);
@@ -148,8 +151,14 @@ export default function Pacientes() {
         await api.put(`/pacientes/${pacienteEditando.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('✅ Paciente actualizado');
       } else {
-        await api.post('/pacientes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const res = await api.post('/pacientes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('✅ Paciente registrado');
+        setModalAbierto(false);
+        cargarDatos();
+        // El backend retorna directamente el objeto paciente
+        const nuevoId = res.data?.id || null;
+        if (nuevoId) setPacienteNuevoId(nuevoId);
+        return;
       }
       setModalAbierto(false);
       cargarDatos();
@@ -272,6 +281,11 @@ export default function Pacientes() {
                         className="bg-teal-100 text-teal-700 px-3 py-1 rounded-lg text-sm hover:bg-teal-200 transition"
                         title="Ver hoja de vida">
                         👁️
+                      </button>
+                      <button onClick={() => navigate(`/ficha/${p.id}`)}
+                        className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-sm hover:bg-indigo-200 transition"
+                        title="Ficha técnica">
+                        📋 Ficha
                       </button>
                       <button onClick={() => abrirModal(p)}
                         className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-lg text-sm hover:bg-yellow-200 transition">
@@ -480,7 +494,35 @@ export default function Pacientes() {
         </div>
       )}
 
-      {/* ═══ MODAL HOJA DE VIDA ══════════════════════════════════════════ */}
+      {/* ═══ MODAL POST-CREACIÓN: ¿Crear ficha técnica? ═══════════════════ */}
+      {pacienteNuevoId && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="p-6 text-center">
+              <div className="text-5xl mb-3">📋</div>
+              <h2 className="text-lg font-bold text-gray-800 mb-2">¡Paciente registrado!</h2>
+              <p className="text-gray-500 text-sm mb-5">
+                ¿Deseas crear la <strong>Ficha Técnica</strong> ahora?<br/>
+                <span className="text-xs text-gray-400">Incluye antecedentes, autorizaciones y firmas del tutor</span>
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPacienteNuevoId(null)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-50 font-medium text-sm">
+                  Ahora no
+                </button>
+                <button
+                  onClick={() => { setPacienteNuevoId(null); navigate(`/ficha/${pacienteNuevoId}`); }}
+                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium text-sm">
+                  📋 Crear Ficha
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MODAL HOJA DE VIDA ══════════════════════════════════════════ */}}
       {hojaVida && (
         <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-[60] p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-8">
