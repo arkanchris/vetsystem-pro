@@ -3,10 +3,18 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-console.log('DATABASE_URL existe:', !!process.env.DATABASE_URL);
+console.log('DB_HOST existe:', !!process.env.DB_HOST);
+console.log('DB_PORT existe:', !!process.env.DB_PORT);
+console.log('DB_NAME existe:', !!process.env.DB_NAME);
+console.log('DB_USER existe:', !!process.env.DB_USER);
+console.log('DB_PASSWORD existe:', !!process.env.DB_PASSWORD);
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   ssl: {
     rejectUnauthorized: false,
   },
