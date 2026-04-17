@@ -2,27 +2,122 @@
 
 /* ── Fondo principal del sistema ──────────────────────────────────────────── */
 :root {
-  --bg-app: #eef2f7;      /* Gris azulado suave — contrasta con tarjetas blancas */
-  --bg-sidebar: #1e2d5a;  /* Azul oscuro del sidebar (ya definido en Sidebar.jsx) */
+  --bg-app: #eef2f7;
+  --bg-sidebar: #1e2d5a;
 }
 
 body {
   background-color: var(--bg-app);
 }
 
-/* Scrollbar personalizada — se ve más prolija */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ── Scrollbar personalizada ─────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: #dde3ec; border-radius: 10px; }
+::-webkit-scrollbar-thumb  { background: #a0aec0; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #718096; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FIX RESPONSIVE MÓVIL — tablas con scroll horizontal
+   Se aplica a TODOS los módulos automáticamente
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Cualquier div que contenga una tabla: permite scroll horizontal */
+div:has(> table),
+div:has(> div > table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
-::-webkit-scrollbar-track {
-  background: #dde3ec;
-  border-radius: 10px;
+
+/* Las tablas no se comprimen — mantienen su ancho mínimo */
+table {
+  min-width: 600px;
 }
-::-webkit-scrollbar-thumb {
-  background: #a0aec0;
-  border-radius: 10px;
+
+/* En móvil, el contenido principal no se desborda */
+@media (max-width: 768px) {
+
+  /* Evitar que nada se salga de la pantalla */
+  * {
+    box-sizing: border-box;
+  }
+
+  /* El main no debe desbordar */
+  main {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Padding más pequeño en páginas en móvil */
+  .p-6 {
+    padding: 1rem !important;
+  }
+
+  .p-8 {
+    padding: 1.25rem !important;
+  }
+
+  /* Grids de múltiples columnas se vuelven de 1 columna en móvil */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .md\:grid-cols-2,
+  .md\:grid-cols-3,
+  .md\:grid-cols-4,
+  .lg\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Las cards de estadísticas sí pueden ir de a 2 en móvil */
+  .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Tablas: el contenedor permite scroll */
+  .overflow-hidden {
+    overflow-x: auto !important;
+    overflow-y: hidden;
+  }
+
+  /* Los modales ocupan toda la pantalla en móvil */
+  .max-w-lg,
+  .max-w-xl,
+  .max-w-2xl,
+  .max-w-3xl {
+    max-width: calc(100vw - 1rem) !important;
+    margin: 0.5rem !important;
+  }
+
+  /* Formularios: inputs ocupan todo el ancho */
+  input, select, textarea {
+    font-size: 16px !important; /* evita zoom automático en iOS */
+  }
+
+  /* Botones de acciones en tablas: más compactos */
+  td .flex.gap-2 {
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
+
+  /* Texto de encabezados más pequeño */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #718096;
+
+/* Tablet (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+
+  .grid-cols-3,
+  .grid-cols-4,
+  .lg\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  table {
+    min-width: 500px;
+  }
 }
