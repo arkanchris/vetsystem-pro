@@ -4,21 +4,55 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 
+// ── ANIMALES FLOTANTES (emojis que flotan en el fondo) ────────────────────────
+const ANIMALES = ['🐶','🐱','🐾','🐕','🐈','🦮','🐩','😸','🐈‍⬛','🦴','❤️','🐾',
+                  '🐶','🐱','🐕‍🦺','😺','🐾','🦴','🐩','🐈'];
+
+function AnimalFlotante({ emoji, style }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      fontSize: style.size,
+      opacity: style.opacity,
+      left: style.left,
+      top: style.top,
+      animation: `flotar ${style.duration}s ease-in-out infinite`,
+      animationDelay: style.delay,
+      userSelect: 'none',
+      pointerEvents: 'none',
+      filter: 'blur(0.3px)',
+    }}>
+      {emoji}
+    </div>
+  );
+}
+
+const animalesConfig = ANIMALES.map((emoji, i) => ({
+  emoji,
+  style: {
+    size:     `${Math.random() * 2 + 1.5}rem`,
+    opacity:  Math.random() * 0.15 + 0.08,
+    left:     `${Math.random() * 95}%`,
+    top:      `${Math.random() * 95}%`,
+    duration: Math.random() * 4 + 4,
+    delay:    `${Math.random() * 4}s`,
+  }
+}));
+
 export default function Login() {
   const [login_input, setLoginInput] = useState('');
-  const [password, setPassword]      = useState('');
-  const [cargando, setCargando]      = useState(false);
+  const [password,    setPassword]   = useState('');
+  const [cargando,    setCargando]   = useState(false);
   const [verPassword, setVerPassword] = useState(false);
 
-  // Recuperar contraseña
   const [modalRecuperar, setModalRecuperar] = useState(false);
-  const [recUsername, setRecUsername]       = useState('');
-  const [recEmail, setRecEmail]             = useState('');
-  const [enviando, setEnviando]             = useState(false);
-  const [enviado, setEnviado]               = useState(false);
+  const [recUsername,    setRecUsername]    = useState('');
+  const [recEmail,       setRecEmail]       = useState('');
+  const [enviando,       setEnviando]       = useState(false);
+  const [enviado,        setEnviado]        = useState(false);
 
   const { login } = useAuth();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,146 +88,295 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-teal-700 flex items-center justify-center p-4">
-      <Toaster position="top-right" />
-      <div className="w-full max-w-md">
+    <>
+      {/* ── CSS de la animación ────────────────────────────────────────────── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
 
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-4">
-            <span className="text-4xl">🐾</span>
+        @keyframes flotar {
+          0%, 100% { transform: translateY(0px) rotate(-5deg); }
+          50%       { transform: translateY(-18px) rotate(5deg); }
+        }
+
+        @keyframes aparecer {
+          from { opacity: 0; transform: translateY(30px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-card {
+          animation: aparecer 0.6s ease forwards;
+        }
+
+        .titulo-vetsystem {
+          font-family: 'Fredoka One', cursive;
+          letter-spacing: 1px;
+        }
+
+        .subtitulo-login {
+          font-family: 'Nunito', sans-serif;
+        }
+      `}</style>
+
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0f1f4b 0%, #1a3a6b 30%, #0d4d6b 60%, #0a5c55 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: 'Nunito, sans-serif',
+      }}>
+        <Toaster position="top-right" />
+
+        {/* ── FONDO: animales flotantes ─────────────────────────────────── */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+          {animalesConfig.map((a, i) => (
+            <AnimalFlotante key={i} emoji={a.emoji} style={a.style} />
+          ))}
+        </div>
+
+        {/* ── CARD PRINCIPAL ────────────────────────────────────────────── */}
+        <div className="login-card" style={{
+          width: '100%',
+          maxWidth: '420px',
+          position: 'relative',
+          zIndex: 10,
+        }}>
+
+          {/* Logo y título */}
+          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            {/* Logo — puedes cambiar el emoji o poner una <img> con tu logo */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '88px',
+              height: '88px',
+              background: 'rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '50%',
+              marginBottom: '1rem',
+              border: '3px solid rgba(255,255,255,0.3)',
+              fontSize: '2.8rem',
+            }}>
+              🐾
+              {/*
+                Para poner TU PROPIO LOGO, reemplaza el emoji por:
+                <img src="/logo.png" alt="Logo" style={{width:'60px',height:'60px',objectFit:'contain',borderRadius:'50%'}} />
+                Y sube tu logo a la carpeta frontend/public/ con el nombre logo.png
+              */}
+            </div>
+
+            {/* Título con fuente especial */}
+            <h1 className="titulo-vetsystem" style={{
+              fontSize: '2.4rem',
+              color: '#ffffff',
+              margin: 0,
+              textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+            }}>
+              VetSystem Pro
+              {/*
+                Para cambiar la fuente, cambia 'Fredoka One' por cualquiera de estas:
+                'Pacifico' — redondeada y amigable
+                'Righteous' — moderna y tecnológica
+                'Baloo 2' — amigable con animales
+                Solo actualiza el @import al inicio del <style> con la nueva fuente
+              */}
+            </h1>
+            <p className="subtitulo-login" style={{
+              color: 'rgba(255,255,255,0.75)',
+              fontSize: '0.95rem',
+              marginTop: '0.3rem',
+            }}>
+              Sistema de Gestión Veterinaria
+            </p>
           </div>
-          <h1 className="text-4xl font-bold text-white">VetSystem Pro</h1>
-          <p className="text-blue-200 mt-2">Sistema de Gestión Veterinaria</p>
-        </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Iniciar Sesión</h2>
+          {/* Formulario */}
+          <div style={{
+            background: 'rgba(255,255,255,0.97)',
+            borderRadius: '20px',
+            padding: '2rem',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.35)',
+          }}>
+            <h2 style={{
+              fontFamily: 'Nunito, sans-serif',
+              fontWeight: 800,
+              fontSize: '1.4rem',
+              color: '#1e2d5a',
+              textAlign: 'center',
+              marginBottom: '1.5rem',
+            }}>
+              Iniciar Sesión
+            </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Usuario
-              </label>
-              <input type="text" value={login_input}
-                onChange={e => setLoginInput(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                placeholder=""
-                required autoComplete="username"/>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-              <div className="relative">
-                <input type={verPassword ? 'text' : 'password'} value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition pr-12"
-                  placeholder="" required autoComplete="current-password"/>
-                <button type="button" onClick={() => setVerPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">
-                  {verPassword ? '🙈' : '👁️'}
-                </button>
-              </div>
-              {/* Olvidaste tu contraseña */}
-              <div className="text-right mt-1.5">
-                <button type="button" onClick={() => { setModalRecuperar(true); setEnviado(false); setRecUsername(''); setRecEmail(''); }}
-                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline">
-                  ¿Olvidaste tu contraseña?
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" disabled={cargando}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50">
-              {cargando ? '⏳ Ingresando...' : '🔐 Ingresar'}
-            </button>
-          </form>
-
-
-        </div>
-
-        <p className="text-center text-blue-200 text-sm mt-6">
-          © {new Date().getFullYear()} VetSystem Pro — Todos los derechos reservados
-        </p>
-      </div>
-
-      {/* ═══ MODAL RECUPERAR CONTRASEÑA ═══════════════════════════════════════ */}
-      {modalRecuperar && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b flex justify-between items-center">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <h2 className="text-lg font-bold text-gray-800">🔐 Recuperar contraseña</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Ingresa tu usuario y correo registrado</p>
+                <label style={{ display:'block', fontSize:'0.875rem', fontWeight:600, color:'#374151', marginBottom:'0.4rem' }}>
+                  Usuario
+                </label>
+                <input
+                  type="text"
+                  value={login_input}
+                  onChange={e => setLoginInput(e.target.value)}
+                  required
+                  autoComplete="username"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '1rem',
+                    fontFamily: 'Nunito, sans-serif',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => e.target.style.borderColor='#3b82f6'}
+                  onBlur={e  => e.target.style.borderColor='#e5e7eb'}
+                />
               </div>
-              <button onClick={() => setModalRecuperar(false)}
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
-            </div>
 
-            {!enviado ? (
-              <form onSubmit={handleRecuperar} className="p-6 space-y-4">
-                <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">
-                  <p>📋 Para restablecer tu contraseña necesitamos verificar tu identidad con:</p>
-                  <ul className="mt-1 ml-4 list-disc">
-                    <li>Tu nombre de usuario</li>
-                    <li>El correo con el que te registraste</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre de usuario *
-                  </label>
-                  <div className="relative">
-                    <input type="text" value={recUsername}
-                      onChange={e => setRecUsername(e.target.value.replace(/^@/, ''))}
-                      required placeholder="tuusuario"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Correo electrónico *
-                  </label>
-                  <input type="email" value={recEmail}
-                    onChange={e => setRecEmail(e.target.value)}
-                    required placeholder="correo@ejemplo.com"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setModalRecuperar(false)}
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                    Cancelar
-                  </button>
-                  <button type="submit" disabled={enviando}
-                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50">
-                    {enviando ? '⏳ Enviando...' : '📧 Enviar enlace'}
+              <div>
+                <label style={{ display:'block', fontSize:'0.875rem', fontWeight:600, color:'#374151', marginBottom:'0.4rem' }}>
+                  Contraseña
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={verPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 3rem 0.75rem 1rem',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '10px',
+                      fontSize: '1rem',
+                      fontFamily: 'Nunito, sans-serif',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                    onFocus={e => e.target.style.borderColor='#3b82f6'}
+                    onBlur={e  => e.target.style.borderColor='#e5e7eb'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setVerPassword(v => !v)}
+                    style={{
+                      position:'absolute', right:'0.75rem', top:'50%',
+                      transform:'translateY(-50%)', background:'none', border:'none',
+                      cursor:'pointer', fontSize:'1.2rem', color:'#9ca3af',
+                    }}>
+                    {verPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
-              </form>
-            ) : (
-              <div className="p-6 text-center space-y-4">
-                <div className="text-5xl mb-2">📬</div>
-                <h3 className="text-lg font-bold text-gray-800">¡Correo enviado!</h3>
-                <p className="text-gray-600 text-sm">
-                  Si los datos ingresados coinciden con una cuenta registrada, recibirás un correo
-                  con instrucciones para restablecer tu contraseña.
-                </p>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-700">
-                  ⏰ El enlace es válido por <strong>1 hora</strong>. Revisa también tu carpeta de spam.
+                <div style={{ textAlign:'right', marginTop:'0.3rem' }}>
+                  <button type="button"
+                    onClick={() => { setModalRecuperar(true); setEnviado(false); setRecUsername(''); setRecEmail(''); }}
+                    style={{ background:'none', border:'none', color:'#3b82f6', fontSize:'0.8rem', cursor:'pointer' }}>
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={cargando}
+                style={{
+                  width: '100%',
+                  padding: '0.85rem',
+                  background: cargando ? '#93c5fd' : 'linear-gradient(135deg, #1e3a8a, #2563eb)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '1rem',
+                  fontFamily: 'Nunito, sans-serif',
+                  fontWeight: 700,
+                  cursor: cargando ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 15px rgba(37,99,235,0.4)',
+                  transition: 'all 0.2s',
+                  marginTop: '0.5rem',
+                }}>
+                {cargando ? '⏳ Ingresando...' : '🔐 Ingresar'}
+              </button>
+            </form>
+          </div>
+
+          <p style={{ textAlign:'center', color:'rgba(255,255,255,0.5)', fontSize:'0.8rem', marginTop:'1.5rem' }}>
+            © {new Date().getFullYear()} VetSystem Pro — Todos los derechos reservados
+          </p>
+        </div>
+
+        {/* ── MODAL RECUPERAR CONTRASEÑA ─────────────────────────────────── */}
+        {modalRecuperar && (
+          <div style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.6)',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            zIndex:50, padding:'1rem',
+          }}>
+            <div style={{
+              background:'#fff', borderRadius:'20px', width:'100%',
+              maxWidth:'440px', boxShadow:'0 25px 60px rgba(0,0,0,0.4)',
+            }}>
+              <div style={{ padding:'1.5rem 1.5rem 1rem', borderBottom:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <h2 style={{ fontWeight:700, fontSize:'1.1rem', color:'#1e2d5a', margin:0 }}>🔐 Recuperar contraseña</h2>
+                  <p style={{ fontSize:'0.85rem', color:'#6b7280', margin:'0.2rem 0 0' }}>Ingresa tu usuario y correo registrado</p>
                 </div>
                 <button onClick={() => setModalRecuperar(false)}
-                  className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                  Entendido
-                </button>
+                  style={{ background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer', color:'#9ca3af' }}>×</button>
               </div>
-            )}
+
+              {!enviado ? (
+                <form onSubmit={handleRecuperar} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+                  <div style={{ background:'#eff6ff', borderRadius:'10px', padding:'0.75rem 1rem', fontSize:'0.85rem', color:'#1d4ed8' }}>
+                    📋 Necesitamos tu nombre de usuario y correo registrado para verificar tu identidad.
+                  </div>
+                  {[
+                    ['text',  recUsername, setRecUsername, 'Nombre de usuario *', 'tuusuario'],
+                    ['email', recEmail,    setRecEmail,    'Correo electrónico *', 'correo@ejemplo.com'],
+                  ].map(([type, val, setVal, label, ph]) => (
+                    <div key={label}>
+                      <label style={{ display:'block', fontSize:'0.875rem', fontWeight:600, color:'#374151', marginBottom:'0.3rem' }}>{label}</label>
+                      <input type={type} value={val} onChange={e => setVal(e.target.value)} required placeholder={ph}
+                        style={{ width:'100%', padding:'0.65rem 1rem', border:'2px solid #e5e7eb', borderRadius:'10px', fontSize:'0.95rem', fontFamily:'Nunito,sans-serif', outline:'none', boxSizing:'border-box' }}
+                        onFocus={e=>e.target.style.borderColor='#3b82f6'}
+                        onBlur={e=>e.target.style.borderColor='#e5e7eb'}
+                      />
+                    </div>
+                  ))}
+                  <div style={{ display:'flex', gap:'0.75rem', paddingTop:'0.5rem' }}>
+                    <button type="button" onClick={() => setModalRecuperar(false)}
+                      style={{ flex:1, padding:'0.65rem', border:'2px solid #e5e7eb', borderRadius:'10px', background:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600 }}>
+                      Cancelar
+                    </button>
+                    <button type="submit" disabled={enviando}
+                      style={{ flex:1, padding:'0.65rem', background:'#2563eb', color:'#fff', border:'none', borderRadius:'10px', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700 }}>
+                      {enviando ? '⏳ Enviando...' : '📧 Enviar enlace'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div style={{ padding:'2rem', textAlign:'center' }}>
+                  <div style={{ fontSize:'3rem', marginBottom:'0.5rem' }}>📬</div>
+                  <h3 style={{ fontWeight:700, color:'#1e2d5a', marginBottom:'0.5rem' }}>¡Correo enviado!</h3>
+                  <p style={{ color:'#6b7280', fontSize:'0.9rem', marginBottom:'1rem' }}>
+                    Si los datos coinciden con una cuenta registrada, recibirás un correo con instrucciones.
+                  </p>
+                  <button onClick={() => setModalRecuperar(false)}
+                    style={{ width:'100%', padding:'0.75rem', background:'#2563eb', color:'#fff', border:'none', borderRadius:'10px', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700 }}>
+                    Entendido
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }
